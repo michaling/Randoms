@@ -93,6 +93,31 @@
             0% { opacity: 1; transform: translateY(0) scale(1); }
             100% { opacity: 0; transform: translateY(-300px) scale(0.5); }
         }
+
+        .game-btn {
+            padding: 15px 50px;
+            font-size: 1.3em;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            transition: transform 0.1s;
+            box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: #ff69b4;
+            color: white;
+        }
+
+        .game-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .game-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -105,6 +130,7 @@
             </div>
         </div>
         <iframe id="spotifyPlayer" style="border-radius:12px; width:100%; max-width:400px;" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+        <button class="game-btn" id="gameBtn">Start Game! 🎮</button>
     </div>
     <script>
         const youChar = JSON.parse(localStorage.getItem('valentineYou')) || {
@@ -708,6 +734,11 @@
         }
         setInterval(spawnHeart, 800);
         for (let i = 0; i < 8; i++) setTimeout(spawnHeart, i * 300);
+
+        // ============ START GAME ============
+        document.getElementById('gameBtn').addEventListener('click', () => {
+            window.location.href = 'game.html';
+        });
     </script>
 </body>
 </html>

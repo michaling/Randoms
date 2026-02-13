@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let's go</title>
+    <script src="shared.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #a8d8ff;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            image-rendering: pixelated;
+        }
+
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 95%;
+            max-width: 1400px;
+        }
+
+        .game-frame {
+            position: relative;
+            border: 8px solid #4a90e2;
+            box-shadow:
+                0 0 0 4px #fff,
+                0 0 0 12px #ff69b4,
+                8px 8px 0 12px rgba(0,0,0,0.3);
+            width: 100%;
+            overflow: hidden;
+            background: #222;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 4px;
+        }
+
+        .hud-item {
+            color: #4a90e2;
+            font-size: 1.4em;
+            font-weight: bold;
+            text-shadow: 2px 2px 0px rgba(255, 105, 180, 0.3);
+            letter-spacing: 1px;
+        }
+
+        .controls-hint {
+            color: #ff69b4;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .overlay.hidden { display: none; }
+
+        .overlay-text {
+            color: #fff;
+            font-size: 3em;
+            font-weight: bold;
+            text-shadow: 4px 4px 0 #ff69b4;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .overlay-sub {
+            color: #ffcce0;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .overlay-btn {
+            padding: 14px 50px;
+            font-size: 1.4em;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: #ff69b4;
+            color: white;
+            transition: transform 0.1s;
+        }
+
+        .overlay-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <div class="hud">
+            <span class="hud-item" id="scoreDisplay">Score: 0</span>
+            <span class="hud-item" id="livesDisplay">❤️❤️❤️</span>
+        </div>
+        <div class="game-frame">
+            <canvas id="gameCanvas" width="800" height="400"></canvas>
+            <div class="overlay" id="startOverlay">
+                <div class="overlay-text">Let's go!</div>
+                <div class="overlay-sub">Jump over obstacles together!</div>
+                <button class="overlay-btn" id="startBtn">Start! 💖</button>
+            </div>
+            <div class="overlay hidden" id="gameOverOverlay">
+                <div class="overlay-text">Game Over!</div>
+                <div class="overlay-sub" id="finalScore">Score: 0</div>
+                <button class="overlay-btn" id="retryBtn">Try Again 💖</button>
+            </div>
+        </div>
+        <br>
+        <p class="controls-hint">WASD to move · SPACE to jump</p>
+    </div>
+
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = 800, H = 400;
+
+    // ============ LOAD CHARACTER DATA ============
+    const youChar = JSON.parse(localStorage.getItem('valentineYou')) || {
+        skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+        shirtColor: '#FF69B4', pantsColor: '#4169E1', eyeColor: '#3B2314', shoeColor: '#333333',
+        bodyType: 'male'
+    };
+    const dateChar = JSON.parse(localStorage.getItem('valentineDate')) || {
+        skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+        shirtColor: '#4a90e2', pantsColor: '#1A1A1A', eyeColor: '#4a90e2', shoeColor: '#333333',
+        bodyType: 'female'
+    };
+    const catChar = JSON.parse(localStorage.getItem('valentineCat')) || null;
+    const dateSettings = JSON.parse(localStorage.getItem('valentineDateSettings')) || { location: 'beach' };
+
+    // ============ PIXEL HELPERS ============
+    const P = 2;
+
+    function px(c, x, y, color) {
+        c.fillStyle = color;
+        c.fillRect(x * P, y * P, P, P);
+    }
+    function rect(c, x, y, w, h, color) {
+        c.fillStyle = color;
+        c.fillRect(x * P, y * P, w * P, h * P);
+    }
+    function darken(hex, amt) {
+        let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+        r = Math.max(0, r - amt); g = Math.max(0, g - amt); b = Math.max(0, b - amt);
+        return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+    }
+    function lighten(hex, amt) {
+        let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+        r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+        return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+    }
+
+    // ============ BACKGROUND MUSIC ============
+    const bgMusic = new Audio('music/Anthem For The Earnest.mp3');
+    bgMusic.loop = true;
+    bgMusic.volume = 0.4;
+
+    // ============ DRAW CHARACTER (same as date-scene but with P=4) ============
+    function drawCharAt(c, ox, oy, ch) {
+        const _px = (x, y, col) => px(c, ox + x, oy + y, col);
+        const _rect = (x, y, w, h, col) => rect(c, ox + x, oy + y, w, h, col);
+        const skin = ch.skinColor, hair = ch.hairColor, shirt = ch.shirtColor;
+        const pants = ch.pantsColor, eyes = ch.eyeColor, shoe = ch.shoeColor;
+        const ol = '#1A1A1A';
+        const isFemale = ch.bodyType === 'female';
+        const skinDark = darken(skin, 35);
+        const shirtDark = darken(shirt, 40);
+        const shirtLight = lighten(shirt, 30);
+        const pantsDark = darken(pants, 30);
+        const lipColor = isFemale ? '#D4707A' : darken(skin, 25);
+
+        if (ch.hairStyle === 'long') {
+            _rect(5, 2, 14, 16, hair); _rect(4, 5, 16, 15, hair);
+            _rect(3, 7, 3, 14, hair); _rect(18, 7, 3, 14, hair);
+        }
+        if (ch.hairStyle === 'ponytail') {
+            _rect(5, 2, 14, 5, hair); _rect(4, 5, 16, 2, hair);
+            _rect(17, 7, 4, 2, hair); _rect(20, 9, 3, 8, hair); _rect(19, 17, 2, 3, hair);
+        }
+        _rect(7, 6, 10, 12, skin);
+        _rect(8, 5, 8, 1, ol); _px(7, 5, ol); _px(16, 5, ol);
+        _rect(6, 6, 1, 12, ol); _rect(17, 6, 1, 12, ol);
+        _rect(7, 18, 10, 1, ol); _px(6, 17, ol); _px(17, 17, ol);
+        if (isFemale) {
+            _rect(8, 9, 3, 1, darken(hair, 10)); _rect(13, 9, 3, 1, darken(hair, 10));
+        } else {
+            _rect(8, 8, 3, 1, darken(hair, 20)); _rect(13, 8, 3, 1, darken(hair, 20));
+            _rect(8, 9, 3, 1, darken(hair, 10)); _rect(13, 9, 3, 1, darken(hair, 10));
+        }
+        if (isFemale) {
+            _rect(8, 10, 3, 3, '#FFF'); _rect(13, 10, 3, 3, '#FFF');
+            _rect(9, 10, 2, 3, eyes); _rect(14, 10, 2, 3, eyes);
+            _px(9, 11, darken(eyes, 30)); _px(14, 11, darken(eyes, 30));
+            _px(10, 10, '#FFF'); _px(15, 10, '#FFF');
+        } else {
+            _rect(8, 10, 3, 2, '#FFF'); _rect(13, 10, 3, 2, '#FFF');
+            _rect(9, 10, 2, 2, eyes); _rect(14, 10, 2, 2, eyes);
+            _px(10, 10, '#FFF'); _px(15, 10, '#FFF');
+        }
+        _px(11, 13, skinDark); _px(12, 14, darken(skin, 18));
+        _rect(10, 16, 4, 1, lipColor);
+        if (ch.hairStyle === 'short') {
+            _rect(8, 1, 8, 1, hair); _rect(7, 2, 10, 1, hair);
+            _rect(6, 3, 12, 3, hair); _rect(5, 4, 1, 9, hair); _rect(18, 4, 1, 9, hair);
+            _rect(7, 6, 2, 1, hair);
+            _px(6, 6, hair); _px(6, 7, hair); _px(6, 8, hair);
+            _px(17, 6, hair); _px(17, 7, hair); _px(17, 8, hair);
+        } else if (ch.hairStyle === 'long') {
+            _rect(5, 2, 14, 5, hair); _rect(6, 1, 12, 1, hair);
+        } else if (ch.hairStyle === 'curly') {
+            _rect(5, 2, 14, 5, hair); _rect(6, 0, 12, 2, hair); _rect(8, -1, 8, 1, hair);
+            _rect(3, 3, 3, 2, hair); _rect(2, 5, 3, 2, hair);
+            _rect(3, 7, 3, 2, hair); _rect(2, 9, 3, 2, hair); _rect(3, 11, 3, 2, hair);
+            _rect(18, 3, 3, 2, hair); _rect(19, 5, 3, 2, hair);
+            _rect(18, 7, 3, 2, hair); _rect(19, 9, 3, 2, hair); _rect(18, 11, 3, 2, hair);
+        } else if (ch.hairStyle === 'ponytail') {
+            _rect(6, 3, 12, 4, hair); _rect(7, 2, 10, 1, hair); _rect(5, 5, 2, 3, hair);
+        } else if (ch.hairStyle === 'mohawk') {
+            _rect(10, 0, 4, 6, hair); _rect(9, 1, 6, 2, hair); _rect(6, 4, 12, 3, hair);
+        }
+        _rect(5, 10, 1, 3, skin); _rect(18, 10, 1, 3, skin);
+        if (isFemale) { _rect(10, 19, 4, 2, skin); } else { _rect(9, 19, 6, 2, skin); }
+        if (isFemale) {
+            _rect(6, 21, 12, 9, shirt);
+            _rect(5, 21, 1, 8, ol); _rect(18, 21, 1, 8, ol); _rect(6, 21, 12, 1, ol);
+            _rect(3, 22, 3, 6, skin); _rect(18, 22, 3, 6, skin);
+            _rect(3, 22, 3, 2, shirt); _rect(18, 22, 3, 2, shirt);
+            _rect(3, 28, 3, 2, skin); _rect(18, 28, 3, 2, skin);
+            _rect(3, 30, 3, 1, ol); _rect(18, 30, 3, 1, ol);
+            _rect(4, 29, 16, 1, darken(pants, 50));
+            _rect(4, 30, 16, 7, pants);
+            _rect(3, 30, 1, 7, ol); _rect(20, 30, 1, 7, ol);
+            _rect(3, 37, 8, 2, shoe); _rect(13, 37, 8, 2, shoe);
+            _rect(2, 37, 1, 2, ol); _rect(11, 37, 1, 2, ol);
+            _rect(12, 37, 1, 2, ol); _rect(21, 37, 1, 2, ol);
+            _rect(2, 39, 10, 1, ol); _rect(12, 39, 10, 1, ol);
+        } else {
+            _rect(5, 21, 14, 9, shirt);
+            _rect(4, 21, 1, 9, ol); _rect(19, 21, 1, 9, ol); _rect(5, 21, 14, 1, ol);
+            _rect(2, 22, 3, 7, skin); _rect(19, 22, 3, 7, skin);
+            _rect(2, 22, 3, 3, shirt); _rect(19, 22, 3, 3, shirt);
+            _rect(2, 29, 3, 2, skin); _rect(19, 29, 3, 2, skin);
+            _rect(2, 31, 3, 1, ol); _rect(19, 31, 3, 1, ol);
+            _rect(5, 29, 14, 1, darken(pants, 50));
+            _rect(5, 30, 14, 7, pants);
+            _rect(4, 30, 1, 7, ol); _rect(19, 30, 1, 7, ol);
+            _rect(4, 37, 7, 2, shoe); _rect(13, 37, 7, 2, shoe);
+            _rect(3, 37, 1, 2, ol); _rect(11, 37, 1, 2, ol);
+            _rect(12, 37, 1, 2, ol); _rect(20, 37, 1, 2, ol);
+            _rect(3, 39, 9, 1, ol); _rect(12, 39, 9, 1, ol);
+        }
+    }
+
+    function drawCatAt(c, ox, oy, cat) {
+        const _px = (x, y, col) => px(c, ox + x, oy + y, col);
+        const _rect = (x, y, w, h, col) => rect(c, ox + x, oy + y, w, h, col);
+        const fur = cat.furColor, eyes = cat.eyeColor, ol = '#1A1A1A';
+        const furDark = darken(fur, 35), furLight = lighten(fur, 30), nose = '#FFB6C1';
+        _px(1, 0, ol); _px(2, 0, ol);
+        _px(0, 1, ol); _px(1, 1, fur); _px(2, 1, fur); _px(3, 1, ol);
+        _px(8, 0, ol); _px(9, 0, ol);
+        _px(7, 1, ol); _px(8, 1, fur); _px(9, 1, fur); _px(10, 1, ol);
+        _rect(1, 2, 9, 6, fur);
+        _rect(0, 2, 1, 6, ol); _rect(10, 2, 1, 6, ol);
+        _rect(1, 2, 9, 1, ol); _rect(1, 7, 9, 1, ol);
+        _rect(2, 4, 2, 2, '#FFF'); _rect(7, 4, 2, 2, '#FFF');
+        _px(3, 4, eyes); _px(3, 5, eyes); _px(8, 4, eyes); _px(8, 5, eyes);
+        _px(3, 5, darken(eyes, 40)); _px(8, 5, darken(eyes, 40));
+        _px(5, 5, nose);
+        _px(4, 6, ol); _px(5, 6, ol); _px(6, 6, ol);
+        _px(0, 5, ol); _px(10, 5, ol);
+        _rect(2, 8, 7, 4, fur);
+        _rect(1, 8, 1, 4, ol); _rect(9, 8, 1, 4, ol);
+        _rect(4, 9, 3, 2, furLight);
+        _rect(2, 12, 2, 2, fur); _rect(7, 12, 2, 2, fur);
+        _rect(1, 12, 1, 2, ol); _rect(4, 12, 1, 2, ol);
+        _rect(6, 12, 1, 2, ol); _rect(9, 12, 1, 2, ol);
+        _rect(1, 14, 4, 1, ol); _rect(6, 14, 4, 1, ol);
+        _px(9, 9, fur); _px(10, 8, fur); _px(11, 7, fur); _px(12, 6, fur);
+        _px(10, 9, ol); _px(11, 8, ol); _px(12, 7, ol); _px(13, 6, ol);
+        _px(9, 8, ol); _px(10, 7, ol); _px(11, 6, ol); _px(12, 5, ol);
+    }
+
+    // ============ OBSTACLE THEMES BY LOCATION ============
+    const obstacleThemes = {
+        beach: {
+            groundColor: '#F4E0AF',
+            groundDark: '#D4C08F',
+            skyColors: ['#87CEEB', '#B0E0E6'],
+            obstacles: [
+                { emoji: '🏖️', size: 28 },
+                { emoji: '🐚', size: 22 },
+                { emoji: '🦀', size: 24 },
+                { emoji: '🥥', size: 22 },
+                { emoji: '🏄', size: 28 },
+                { emoji: '⛱️', size: 26 },
+            ]
+        },
+        park: {
+            groundColor: '#4CAF50',
+            groundDark: '#388E3C',
+            skyColors: ['#87CEEB', '#98FB98'],
+            obstacles: [
+                { emoji: '🌳', size: 28 },
+                { emoji: '🦆', size: 24 },
+                { emoji: '🌻', size: 26 },
+                { emoji: '🍄', size: 22 },
+                { emoji: '🐿️', size: 22 },
+            ]
+        },
+        city: {
+            groundColor: '#555555',
+            groundDark: '#444444',
+            skyColors: ['#1a1a2e', '#4a6fa5'],
+            isCity: true,
+            obstacles: [
+                { emoji: '🚧', size: 28 },
+                { emoji: '🧯', size: 24 },
+                { emoji: '📮', size: 26 },
+                { emoji: '🗑️', size: 24 },
+                { emoji: '🚗', size: 28 },
+                { emoji: '🛒', size: 26 },
+            ]
+        },
+        mountain: {
+            groundColor: '#8FBC8F',
+            groundDark: '#6B8E6B',
+            skyColors: ['#87CEEB', '#B0E0E6'],
+            obstacles: [
+                { emoji: '🌲', size: 28 },
+                { emoji: '🦅', size: 24 },
+                { emoji: '⛰️', size: 28 },
+                { emoji: '🍂', size: 22 },
+                { emoji: '🐻', size: 26 },
+            ]
+        },
+        home: {
+            wallColor: '#FFF5E6',
+            wallColor2: '#FCECD5',
+            floorColor: '#C4956A',
+            floorDark: '#A07850',
+            groundColor: '#C4956A',
+            groundDark: '#A07850',
+            skyColors: ['#FFF5E6', '#FCECD5'],
+            isIndoor: true,
+            obstacles: [
+                { emoji: '👟', size: 24 },
+                { emoji: '📚', size: 24 },
+                { emoji: '☕', size: 22 },
+                { emoji: '🧸', size: 26 },
+                { emoji: '🛋️', size: 28 },
+                { emoji: '🧹', size: 26 },
+            ]
+        },
+        rooftop: {
+            groundColor: '#4A4A4A',
+            groundDark: '#333333',
+            skyColors: ['#191970', '#2F2F4F'],
+            obstacles: [
+                { emoji: '📡', size: 26 },
+                { emoji: '🔧', size: 22 },
+                { emoji: '💨', size: 24 },
+                { emoji: '🧱', size: 24 },
+                { emoji: '⚡', size: 26 },
+            ]
+        }
+    };
+
+    const theme = obstacleThemes[dateSettings.location] || obstacleThemes.beach;
+
+    // ============ GAME STATE ============
+    const GROUND_Y = H - 40;
+    const CHAR_PX_H = 40 * P;
+    const CHAR_PX_W = 24 * P;
+    const CAT_PX_H = 15 * P;
+    const CAT_PX_W = 14 * P;
+    const GRAVITY = 0.45;
+    const JUMP_FORCE = -12;
+    const MOVE_SPEED = 4;
+
+    let gameState = 'start'; // 'start', 'playing', 'over'
+    let score = 0;
+    let lives = 3;
+    let scrollSpeed = 2.5;
+    let frame = 0;
+    let invincibleUntil = 0;
+
+    // Group position (all characters move together)
+    let groupX = 60;
+    let groupY = GROUND_Y;
+    let velY = 0;
+    let isJumping = false;
+
+    // Input
+    const keys = {};
+    document.addEventListener('keydown', e => {
+        keys[e.key.toLowerCase()] = true;
+        if (e.key === ' ') e.preventDefault();
+    });
+    document.addEventListener('keyup', e => {
+        keys[e.key.toLowerCase()] = false;
+    });
+
+    // Obstacles
+    let obstacles = [];
+    let nextObstacleIn = 80;
+
+    // Decorations (static background elements)
+    let bgDecos = [];
+    for (let i = 0; i < 6; i++) {
+        bgDecos.push({ x: Math.random() * W, type: Math.floor(Math.random() * 3) });
+    }
+
+    // Static city buildings (generated once)
+    const cityBuildings = [];
+    if (theme.isCity) {
+        const buildingColors = ['#2a2a4a', '#3a3a5a', '#252545', '#33335a', '#2e2e50'];
+        let bx = 0;
+        while (bx < W) {
+            const bw = 40 + Math.random() * 50;
+            const bh = 80 + Math.random() * 180;
+            cityBuildings.push({
+                x: bx, w: bw, h: bh,
+                color: buildingColors[Math.floor(Math.random() * buildingColors.length)],
+                windows: []
+            });
+            // Generate window positions for this building
+            for (let wy = GROUND_Y - bh + 10; wy < GROUND_Y - 15; wy += 18) {
+                for (let wx = bx + 6; wx < bx + bw - 10; wx += 14) {
+                    cityBuildings[cityBuildings.length - 1].windows.push({
+                        x: wx, y: wy,
+                        lit: Math.random() > 0.3
+                    });
+                }
+            }
+            bx += bw + 2;
+        }
+    }
+
+    // ============ OBSTACLE DRAWING ============
+    function drawObstacle(obs) {
+        const t = obs.type;
+        const x = obs.x, y = GROUND_Y - obs.h;
+
+        // Draw emoji
+        ctx.font = obs.h + 'px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(t.emoji, x + obs.w / 2, GROUND_Y);
+    }
+
+    // ============ DRAW BACKGROUND ============
+    function drawBg() {
+        if (theme.isIndoor) {
+            // === INDOOR ROOM ===
+            // Wall
+            ctx.fillStyle = theme.wallColor;
+            ctx.fillRect(0, 0, W, GROUND_Y);
+
+            // Subtle wallpaper stripe pattern (static)
+            ctx.fillStyle = theme.wallColor2;
+            for (let sx = 0; sx < W; sx += 40) {
+                ctx.fillRect(sx, 0, 18, GROUND_Y);
+            }
+
+            // Baseboard
+            ctx.fillStyle = '#8B7355';
+            ctx.fillRect(0, GROUND_Y - 10, W, 10);
+            ctx.fillStyle = '#A0896C';
+            ctx.fillRect(0, GROUND_Y - 10, W, 3);
+
+            // Static picture frames on wall
+            ctx.globalAlpha = 0.8;
+            const frameEmojis = ['💕', '🌸', '🏠', '🎀', '❤️'];
+            let frameIdx = 0;
+            for (let fx = 80; fx < W; fx += 300) {
+                ctx.fillStyle = '#8B7355';
+                ctx.fillRect(fx, 60, 60, 50);
+                ctx.fillStyle = '#D4E6F1';
+                ctx.fillRect(fx + 5, 65, 50, 40);
+                ctx.font = '20px serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(frameEmojis[frameIdx % frameEmojis.length], fx + 30, 92);
+                frameIdx++;
+            }
+            ctx.globalAlpha = 1;
+
+            // Static window
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#A0C4E8';
+            ctx.fillRect(500, 40, 70, 80);
+            ctx.strokeStyle = '#FFF5E6';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(500, 40, 70, 80);
+            ctx.beginPath();
+            ctx.moveTo(535, 40);
+            ctx.lineTo(535, 120);
+            ctx.moveTo(500, 80);
+            ctx.lineTo(570, 80);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            // Floor (wooden)
+            ctx.fillStyle = theme.floorColor;
+            ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+            // Static wood plank lines
+            ctx.fillStyle = theme.floorDark;
+            for (let gx = 0; gx < W; gx += 50) {
+                ctx.fillRect(gx, GROUND_Y, 2, H - GROUND_Y);
+            }
+            ctx.fillRect(0, GROUND_Y + 18, W, 1);
+
+            // Floor line
+            ctx.fillStyle = '#1A1A1A';
+            ctx.fillRect(0, GROUND_Y - 1, W, 2);
+
+        } else if (theme.isCity) {
+            // === CITY ===
+            // Sky gradient
+            const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+            grad.addColorStop(0, theme.skyColors[0]);
+            grad.addColorStop(1, theme.skyColors[1]);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, GROUND_Y);
+
+            // Static stars
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.5;
+            const starPositions = [
+                [50,20],[130,45],[210,15],[320,35],[400,10],[480,50],[560,25],[650,40],[720,18],[780,55],
+                [90,60],[180,70],[350,65],[520,72],[670,58],[750,42]
+            ];
+            starPositions.forEach(([sx, sy]) => {
+                ctx.fillRect(sx, sy, 2, 2);
+            });
+            ctx.globalAlpha = 1;
+
+            // Static buildings (skyline)
+            cityBuildings.forEach(b => {
+                // Building body
+                ctx.fillStyle = b.color;
+                ctx.fillRect(b.x, GROUND_Y - b.h, b.w, b.h);
+
+                // Building outline
+                ctx.strokeStyle = '#1a1a2e';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(b.x, GROUND_Y - b.h, b.w, b.h);
+
+                // Windows
+                b.windows.forEach(win => {
+                    ctx.fillStyle = win.lit ? '#FFD700' : '#1a1a2e';
+                    ctx.globalAlpha = win.lit ? 0.8 : 0.5;
+                    ctx.fillRect(win.x, win.y, 8, 10);
+                    ctx.globalAlpha = 1;
+                });
+            });
+
+            // Ground (sidewalk)
+            ctx.fillStyle = theme.groundColor;
+            ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+            // Static ground detail
+            ctx.fillStyle = theme.groundDark;
+            for (let gx = 0; gx < W; gx += 20) {
+                ctx.fillRect(gx, GROUND_Y, 10, 3);
+                ctx.fillRect(gx + 7, GROUND_Y + 8, 8, 2);
+            }
+
+            // Ground line
+            ctx.fillStyle = '#1A1A1A';
+            ctx.fillRect(0, GROUND_Y - 1, W, 2);
+
+        } else {
+            // === OUTDOOR (beach, park, mountain, rooftop) ===
+            // Sky gradient
+            const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+            grad.addColorStop(0, theme.skyColors[0]);
+            grad.addColorStop(1, theme.skyColors[1]);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, GROUND_Y);
+
+            // Static clouds
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = darken(theme.skyColors[1], 20);
+            bgDecos.forEach(d => {
+                if (d.type === 0) {
+                    ctx.fillRect(d.x, 40, 50, 16);
+                    ctx.fillRect(d.x + 10, 30, 30, 10);
+                } else if (d.type === 1) {
+                    ctx.fillRect(d.x, 70, 40, 12);
+                    ctx.fillRect(d.x + 8, 62, 24, 10);
+                } else {
+                    ctx.fillRect(d.x, 55, 35, 10);
+                }
+            });
+            ctx.globalAlpha = 1;
+
+            // Ground
+            ctx.fillStyle = theme.groundColor;
+            ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+            // Static ground detail
+            ctx.fillStyle = theme.groundDark;
+            for (let gx = 0; gx < W; gx += 20) {
+                ctx.fillRect(gx, GROUND_Y, 10, 3);
+                ctx.fillRect(gx + 7, GROUND_Y + 8, 8, 2);
+            }
+
+            // Ground line
+            ctx.fillStyle = '#1A1A1A';
+            ctx.fillRect(0, GROUND_Y - 1, W, 2);
+        }
+    }
+
+    // ============ COLLISION ============
+    function getGroupHitbox() {
+        // Only check a small box around the feet center
+        const charBottom = groupY;
+        const centerX = groupX + CHAR_PX_W + 3;
+        return {
+            left: centerX - 15,
+            right: centerX + 15,
+            top: charBottom - 6,
+            bottom: charBottom
+        };
+    }
+
+    function getObsHitbox(obs) {
+        const cx = obs.x + obs.w / 2;
+        return {
+            left: cx - obs.w * 0.2,
+            right: cx + obs.w * 0.2,
+            top: GROUND_Y - obs.h * 0.5,
+            bottom: GROUND_Y
+        };
+    }
+
+    function boxesOverlap(a, b) {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    }
+
+    // ============ UPDATE ============
+    function update() {
+        if (gameState !== 'playing') return;
+
+        frame++;
+
+        // Movement
+        if (keys['a'] || keys['arrowleft']) groupX -= MOVE_SPEED;
+        if (keys['d'] || keys['arrowright']) groupX += MOVE_SPEED;
+        // Clamp X
+        groupX = Math.max(0, Math.min(groupX, W - (CHAR_PX_W * 2 + 10)));
+
+        // Jump
+        if ((keys[' '] || keys['w'] || keys['arrowup']) && !isJumping) {
+            velY = JUMP_FORCE;
+            isJumping = true;
+        }
+
+        // Gravity
+        velY += GRAVITY;
+        groupY += velY;
+        if (groupY >= GROUND_Y) {
+            groupY = GROUND_Y;
+            velY = 0;
+            isJumping = false;
+        }
+
+        // Scroll speed increases over time
+        scrollSpeed = 2.5 + Math.floor(score / 2000) * 0.2;
+
+        // Spawn obstacles
+        nextObstacleIn--;
+        if (nextObstacleIn <= 0) {
+            const t = theme.obstacles[Math.floor(Math.random() * theme.obstacles.length)];
+            obstacles.push({
+                x: W + 10,
+                w: t.size,
+                h: t.size,
+                type: t,
+                scored: false
+            });
+            nextObstacleIn = 150 + Math.random() * 130 - Math.min(score / 120, 60);
+        }
+
+        // Move obstacles
+        obstacles.forEach(o => o.x -= scrollSpeed);
+
+        // Score
+        obstacles.forEach(o => {
+            if (!o.scored && o.x + o.w < groupX) {
+                o.scored = true;
+                score += 100;
+            }
+        });
+
+        // Remove off-screen
+        obstacles = obstacles.filter(o => o.x + o.w > -50);
+
+        // Collision
+        const now = Date.now();
+        if (now > invincibleUntil) {
+            const gh = getGroupHitbox();
+            for (const o of obstacles) {
+                if (boxesOverlap(gh, getObsHitbox(o))) {
+                    lives--;
+                    invincibleUntil = now + 1500;
+                    if (lives <= 0) {
+                        gameState = 'over';
+                        bgMusic.pause();
+                        bgMusic.currentTime = 0;
+                        document.getElementById('finalScore').textContent = 'Score: ' + score;
+                        document.getElementById('gameOverOverlay').classList.remove('hidden');
+                    }
+                    break;
+                }
+            }
+        }
+
+        // HUD
+        document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
+        let heartsStr = '';
+        for (let i = 0; i < 3; i++) heartsStr += i < lives ? '❤️' : '🖤';
+        document.getElementById('livesDisplay').textContent = heartsStr;
+    }
+
+    // ============ RENDER ============
+    function render() {
+        ctx.clearRect(0, 0, W, H);
+        drawBg();
+
+        // Draw obstacles
+        obstacles.forEach(o => drawObstacle(o));
+
+        // Flicker when invincible
+        const now = Date.now();
+        const isInvincible = now < invincibleUntil;
+        if (isInvincible && Math.floor(now / 100) % 2 === 0) {
+            ctx.globalAlpha = 0.3;
+        }
+
+        // Draw group
+        const charGridY = (groupY - CHAR_PX_H) / P;
+        const youGridX = groupX / P;
+        const dateGridX = (groupX + CHAR_PX_W + 6) / P;
+
+        drawCharAt(ctx, youGridX, charGridY, youChar);
+        drawCharAt(ctx, dateGridX, charGridY, dateChar);
+
+        if (catChar) {
+            const catGridX = (groupX + CHAR_PX_W / 2 + 3) / P;
+            const catGridY = (groupY - CAT_PX_H) / P;
+            drawCatAt(ctx, catGridX, catGridY, catChar);
+        }
+
+        ctx.globalAlpha = 1;
+
+        // Small heart above group
+        const heartBob = Math.sin(frame * 0.08) * 4;
+        const heartX = groupX + CHAR_PX_W + 3;
+        const heartY = groupY - CHAR_PX_H - 10 + heartBob;
+        ctx.fillStyle = '#ff69b4';
+        ctx.font = '14px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('💕', heartX, heartY);
+    }
+
+    // ============ GAME LOOP ============
+    function gameLoop() {
+        update();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+        score = 0;
+        lives = 3;
+        frame = 0;
+        scrollSpeed = 2.5;
+        groupX = 60;
+        groupY = GROUND_Y;
+        velY = 0;
+        isJumping = false;
+        obstacles = [];
+        nextObstacleIn = 80;
+        invincibleUntil = 0;
+        gameState = 'playing';
+        bgMusic.currentTime = 0;
+        bgMusic.play().catch(() => {});
+        document.getElementById('startOverlay').classList.add('hidden');
+        document.getElementById('gameOverOverlay').classList.add('hidden');
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('retryBtn').addEventListener('click', startGame);
+
+    // Initial render
+    gameLoop();
+    </script>
+</body>
+</html>
