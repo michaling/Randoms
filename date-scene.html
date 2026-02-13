@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Date 💕</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #a8d8ff;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 40px 20px;
+            overflow-y: auto;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 750px;
+        }
+
+        .page-title {
+            color: #4a90e2;
+            font-size: 2.2em;
+            text-shadow: 4px 4px 0px rgba(255, 105, 180, 0.3);
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .scene-frame {
+            position: relative;
+            border: 8px solid #4a90e2;
+            box-shadow: 
+                0 0 0 4px #fff,
+                0 0 0 12px #ff69b4,
+                8px 8px 0 12px rgba(0,0,0,0.3);
+            width: 100%;
+            overflow: hidden;
+            background: #222;
+        }
+
+        .scene-layers {
+            position: relative;
+            width: 100%;
+            padding-bottom: 62.5%;
+        }
+
+        .bg-canvas, .char-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .char-canvas {
+            z-index: 2;
+        }
+
+        .floating-heart {
+            position: fixed;
+            font-size: 24px;
+            animation: floatUp 4s ease-in infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <h1 class="page-title">Your Date 💕</h1>
+        <div class="scene-frame">
+            <div class="scene-layers">
+                <canvas id="bgCanvas" class="bg-canvas" width="640" height="400"></canvas>
+                <canvas id="charCanvas" class="char-canvas" width="640" height="400"></canvas>
+            </div>
+        </div>
+        <iframe id="spotifyPlayer" style="border-radius:12px; width:100%; max-width:400px;" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+    </div>
+    <script>
+        const youChar = JSON.parse(localStorage.getItem('valentineYou')) || {
+            skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+            shirtColor: '#FF69B4', pantsColor: '#4169E1', eyeColor: '#3B2314', shoeColor: '#333333',
+            bodyType: 'male'
+        };
+        const dateChar = JSON.parse(localStorage.getItem('valentineDate')) || {
+            skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+            shirtColor: '#4a90e2', pantsColor: '#1A1A1A', eyeColor: '#4a90e2', shoeColor: '#333333',
+            bodyType: 'female'
+        };
+        const dateSettings = JSON.parse(localStorage.getItem('valentineDateSettings')) || {
+            location: 'beach'
+        };
+
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const charCanvas = document.getElementById('charCanvas');
+        const charCtx = charCanvas.getContext('2d');
+        const W = 640, H = 400;
+
+        // ============ PIXEL HELPERS ============
+        const P = 5;
+
+        function px(c, x, y, color) {
+            c.fillStyle = color;
+            c.fillRect(x * P, y * P, P, P);
+        }
+        function rect(c, x, y, w, h, color) {
+            c.fillStyle = color;
+            c.fillRect(x * P, y * P, w * P, h * P);
+        }
+        function darken(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.max(0, r - amt); g = Math.max(0, g - amt); b = Math.max(0, b - amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+        function lighten(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+
+        // ============ DRAW CHARACTER ============
+        function drawCharAt(c, ox, oy, ch) {
+            const _px = (x, y, col) => px(c, ox + x, oy + y, col);
+            const _rect = (x, y, w, h, col) => rect(c, ox + x, oy + y, w, h, col);
+
+            const skin = ch.skinColor, hair = ch.hairColor, shirt = ch.shirtColor;
+            const pants = ch.pantsColor, eyes = ch.eyeColor, shoe = ch.shoeColor;
+            const ol = '#1A1A1A';
+            const isFemale = ch.bodyType === 'female';
+            const skinDark = darken(skin, 35);
+            const skinLight = lighten(skin, 20);
+            const shirtDark = darken(shirt, 40);
+            const shirtLight = lighten(shirt, 30);
+            const pantsDark = darken(pants, 30);
+            const lipColor = isFemale ? '#D4707A' : darken(skin, 25);
+
+            // === HAIR BACK LAYER ===
+            if (ch.hairStyle === 'long') {
+                _rect(5, 2, 14, 5, hair);
+                _rect(4, 5, 16, 2, hair);
+                _rect(3, 7, 3, 14, hair);
+                _rect(18, 7, 3, 14, hair);
+            }
+            if (ch.hairStyle === 'ponytail') {
+                _rect(5, 2, 14, 5, hair);
+                _rect(4, 5, 16, 2, hair);
+                _rect(17, 7, 4, 2, hair);
+                _rect(20, 9, 3, 8, hair);
+                _rect(19, 17, 2, 3, hair);
+            }
+
+            // === HEAD ===
+            _rect(7, 6, 10, 12, skin);
+            _rect(8, 5, 8, 1, ol);
+            _px(7, 5, ol); _px(16, 5, ol);
+            _rect(6, 6, 1, 12, ol);
+            _rect(17, 6, 1, 12, ol);
+            _rect(7, 18, 10, 1, ol);
+            _px(6, 17, ol); _px(17, 17, ol);
+            _rect(7, 14, 2, 1, lighten(skin, 12));
+            _rect(15, 14, 2, 1, lighten(skin, 12));
+
+            // === EYEBROWS ===
+            if (isFemale) {
+                _rect(8, 9, 3, 1, darken(hair, 10));
+                _rect(13, 9, 3, 1, darken(hair, 10));
+            } else {
+                _rect(8, 8, 3, 1, darken(hair, 20));
+                _rect(13, 8, 3, 1, darken(hair, 20));
+                _rect(8, 9, 3, 1, darken(hair, 10));
+                _rect(13, 9, 3, 1, darken(hair, 10));
+            }
+
+            // === EYES ===
+            if (isFemale) {
+                _rect(8, 10, 3, 3, '#FFFFFF');
+                _rect(13, 10, 3, 3, '#FFFFFF');
+                _rect(9, 10, 2, 3, eyes);
+                _rect(14, 10, 2, 3, eyes);
+                _px(9, 11, darken(eyes, 30));
+                _px(14, 11, darken(eyes, 30));
+                _px(10, 10, '#FFFFFF'); _px(15, 10, '#FFFFFF');
+                _px(8, 9, ol); _px(15, 9, ol);
+            } else {
+                _rect(8, 10, 3, 2, '#FFFFFF');
+                _rect(13, 10, 3, 2, '#FFFFFF');
+                _rect(9, 10, 2, 2, eyes);
+                _rect(14, 10, 2, 2, eyes);
+                _px(10, 10, '#FFFFFF'); _px(15, 10, '#FFFFFF');
+            }
+
+            // === NOSE ===
+            _px(11, 13, skinDark);
+            _px(12, 14, darken(skin, 18));
+
+            // === MOUTH ===
+            _rect(10, 16, 4, 1, lipColor);
+
+            // === HAIR FRONT LAYER ===
+            if (ch.hairStyle === 'short') {
+                _rect(8, 1, 8, 1, hair);
+                _rect(7, 2, 10, 1, hair);
+                _rect(6, 3, 12, 3, hair);
+                _rect(5, 4, 1, 9, hair);
+                _rect(18, 4, 1, 9, hair);
+                _rect(7, 6, 2, 1, hair);
+                _px(6, 6, hair); _px(6, 7, hair); _px(6, 8, hair);
+                _px(17, 6, hair); _px(17, 7, hair); _px(17, 8, hair);
+                _px(10, 2, darken(hair, 25));
+                _px(8, 4, darken(hair, 15)); _px(16, 4, darken(hair, 15));
+                _px(5, 8, darken(hair, 15)); _px(18, 8, darken(hair, 15));
+                _px(13, 2, lighten(hair, 20));
+            } else if (ch.hairStyle === 'long') {
+                _rect(5, 2, 14, 5, hair);
+                _rect(6, 1, 12, 1, hair);
+            } else if (ch.hairStyle === 'curly') {
+                _rect(5, 2, 14, 5, hair);
+                _rect(6, 0, 12, 2, hair);
+                _rect(8, -1, 8, 1, hair);
+                _rect(3, 3, 3, 2, hair); _rect(2, 5, 3, 2, hair);
+                _rect(3, 7, 3, 2, hair); _rect(2, 9, 3, 2, hair);
+                _rect(3, 11, 3, 2, hair);
+                _rect(18, 3, 3, 2, hair); _rect(19, 5, 3, 2, hair);
+                _rect(18, 7, 3, 2, hair); _rect(19, 9, 3, 2, hair);
+                _rect(18, 11, 3, 2, hair);
+                _px(3, 4, darken(hair, 20)); _px(3, 8, darken(hair, 20));
+                _px(20, 4, darken(hair, 20)); _px(20, 8, darken(hair, 20));
+            } else if (ch.hairStyle === 'ponytail') {
+                _rect(6, 3, 12, 4, hair);
+                _rect(7, 2, 10, 1, hair);
+                _rect(5, 5, 2, 3, hair);
+            } else if (ch.hairStyle === 'mohawk') {
+                _rect(10, 0, 4, 6, hair);
+                _rect(9, 1, 6, 2, hair);
+                _rect(6, 4, 12, 3, hair);
+            }
+
+            // === EARS ===
+            _rect(5, 10, 1, 3, skin);
+            _rect(18, 10, 1, 3, skin);
+            _px(5, 11, skinDark); _px(18, 11, skinDark);
+
+            // === NECK ===
+            if (isFemale) { _rect(10, 19, 4, 2, skin); }
+            else { _rect(9, 19, 6, 2, skin); }
+
+            if (isFemale) {
+                _rect(6, 21, 12, 9, shirt);
+                _rect(5, 21, 1, 8, ol); _rect(18, 21, 1, 8, ol);
+                _rect(6, 21, 12, 1, ol);
+                _rect(7, 22, 4, 3, shirtLight); _rect(13, 22, 4, 3, shirtLight);
+                _rect(7, 25, 4, 1, shirtDark); _rect(13, 25, 4, 1, shirtDark);
+                _px(7, 23, shirtDark); _px(16, 23, shirtDark);
+                _rect(6, 26, 1, 2, shirtDark); _rect(17, 26, 1, 2, shirtDark);
+                _rect(9, 21, 6, 1, shirtDark);
+                _rect(11, 24, 1, 3, shirtDark);
+                _rect(8, 23, 2, 1, shirtLight);
+                _rect(3, 22, 3, 6, skin); _rect(18, 22, 3, 6, skin);
+                _rect(3, 22, 3, 2, shirt); _rect(18, 22, 3, 2, shirt);
+                _rect(3, 23, 3, 1, shirtDark); _rect(18, 23, 3, 1, shirtDark);
+                _rect(3, 28, 3, 2, skin); _rect(18, 28, 3, 2, skin);
+                _px(2, 29, skin); _px(21, 29, skin);
+                _rect(3, 30, 3, 1, ol); _rect(18, 30, 3, 1, ol);
+                _px(2, 30, ol); _px(21, 30, ol);
+                _rect(4, 29, 16, 1, darken(pants, 50));
+                _px(11, 29, '#DAA520'); _px(12, 29, '#DAA520');
+                _rect(4, 30, 16, 7, pants);
+                _rect(3, 30, 1, 7, ol); _rect(20, 30, 1, 7, ol);
+                _rect(11, 33, 2, 4, pantsDark);
+                _rect(6, 34, 3, 1, pantsDark); _rect(15, 34, 3, 1, pantsDark);
+                _rect(3, 37, 8, 2, shoe); _rect(13, 37, 8, 2, shoe);
+                _rect(2, 37, 1, 2, ol); _rect(11, 37, 1, 2, ol);
+                _rect(12, 37, 1, 2, ol); _rect(21, 37, 1, 2, ol);
+                _rect(2, 39, 10, 1, ol); _rect(12, 39, 10, 1, ol);
+                _rect(3, 38, 8, 1, darken(shoe, 40)); _rect(13, 38, 8, 1, darken(shoe, 40));
+                _px(4, 37, lighten(shoe, 40)); _px(14, 37, lighten(shoe, 40));
+            } else {
+                _rect(5, 21, 14, 9, shirt);
+                _rect(4, 21, 1, 9, ol); _rect(19, 21, 1, 9, ol);
+                _rect(5, 21, 14, 1, ol);
+                _rect(9, 21, 6, 1, shirtDark);
+                _px(8, 21, shirtDark); _px(15, 21, shirtDark);
+                _rect(11, 24, 1, 4, shirtDark);
+                _rect(13, 25, 1, 3, darken(shirt, 15));
+                _rect(8, 23, 2, 1, shirtLight);
+                _rect(5, 29, 14, 1, darken(pants, 50));
+                _px(11, 29, '#DAA520'); _px(12, 29, '#DAA520');
+                _rect(2, 22, 3, 7, skin); _rect(19, 22, 3, 7, skin);
+                _rect(2, 22, 3, 3, shirt); _rect(19, 22, 3, 3, shirt);
+                _rect(2, 24, 3, 1, shirtDark); _rect(19, 24, 3, 1, shirtDark);
+                _rect(2, 29, 3, 2, skin); _rect(19, 29, 3, 2, skin);
+                _px(1, 30, skin); _px(22, 30, skin);
+                _rect(2, 31, 3, 1, ol); _rect(19, 31, 3, 1, ol);
+                _px(1, 31, ol); _px(22, 31, ol);
+                _rect(5, 30, 14, 7, pants);
+                _rect(4, 30, 1, 7, ol); _rect(19, 30, 1, 7, ol);
+                _rect(11, 33, 2, 4, pantsDark);
+                _px(6, 31, pantsDark); _px(6, 32, pantsDark);
+                _px(17, 31, pantsDark); _px(17, 32, pantsDark);
+                _rect(7, 34, 3, 1, pantsDark); _rect(14, 34, 3, 1, pantsDark);
+                _rect(4, 37, 7, 2, shoe); _rect(13, 37, 7, 2, shoe);
+                _rect(3, 37, 1, 2, ol); _rect(11, 37, 1, 2, ol);
+                _rect(12, 37, 1, 2, ol); _rect(20, 37, 1, 2, ol);
+                _rect(3, 39, 9, 1, ol); _rect(12, 39, 9, 1, ol);
+                _rect(4, 38, 7, 1, darken(shoe, 40)); _rect(13, 38, 7, 1, darken(shoe, 40));
+                _px(5, 37, lighten(shoe, 40)); _px(14, 37, lighten(shoe, 40));
+                _px(3, 38, ol); _px(20, 38, ol);
+            }
+        }
+
+        // ============ PIXEL HEART ============
+        function drawPixelHeart(c, cx, cy, size, color) {
+            const heart = [
+                [0,1,1,0,0,1,1,0],
+                [1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1],
+                [0,1,1,1,1,1,1,0],
+                [0,0,1,1,1,1,0,0],
+                [0,0,0,1,1,0,0,0],
+            ];
+            const ox = cx - 4 * size;
+            const oy = cy - 3.5 * size;
+            c.fillStyle = color;
+            for (let r = 0; r < heart.length; r++) {
+                for (let col = 0; col < heart[r].length; col++) {
+                    if (heart[r][col]) {
+                        c.fillRect(ox + col * size, oy + r * size, size, size);
+                    }
+                }
+            }
+            c.fillStyle = lighten(color, 60);
+            c.fillRect(ox + 1 * size, oy + 1 * size, size, size);
+            c.fillRect(ox + 5 * size, oy + 1 * size, size, size);
+        }
+
+        // ============ LOCATION BACKGROUNDS ============
+        const locationImages = {
+            beach: 'places/beach.webp',
+            park: 'places/park.webp',
+            city: 'places/city.jpg',
+            mountain: 'places/mountain.jpg',
+            home: 'places/home.avif',
+            rooftop: 'places/rooftop.avif'
+        };
+
+        // ============ DRAW BACKGROUND ============
+        function drawBackground() {
+            const loc = dateSettings.location;
+            const bgImg = new Image();
+            bgImg.src = locationImages[loc];
+            bgImg.onload = () => {
+                const scale = Math.max(W / bgImg.width, H / bgImg.height);
+                const sw = bgImg.width * scale;
+                const sh = bgImg.height * scale;
+                const sx = (W - sw) / 2;
+                const sy = (H - sh) / 2;
+                bgCtx.drawImage(bgImg, sx, sy, sw, sh);
+
+                // Subtle darkening at the bottom for ground
+                const grad = bgCtx.createLinearGradient(0, H * 0.7, 0, H);
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+                bgCtx.fillStyle = grad;
+                bgCtx.fillRect(0, H * 0.7, W, H * 0.3);
+            };
+        }
+
+        // ============ DRAW CHARACTERS + HEARTS ============
+        function drawCharacters() {
+            charCtx.clearRect(0, 0, W, H);
+
+            // Grid is W/P = 128 wide, H/P = 80 tall
+            // Character is ~24 wide, ~40 tall in grid units
+            // Center both characters: total width = 24 + gap + 24
+            // gap of ~16 grid units for the heart
+            // total = 24+16+24 = 64, offset from left = (128-64)/2 = 32
+            const youX = 28;
+            const dateX = 76;
+            const charY = 36; // top of hair; feet at 36+39=75, pixel 375
+
+            drawCharAt(charCtx, youX, charY, youChar);
+            drawCharAt(charCtx, dateX, charY, dateChar);
+
+            // Big heart between them
+            const heartCX = ((youX + 24) + dateX) / 2 * P + P/2;
+            const heartCY = (charY + 18) * P;
+            drawPixelHeart(charCtx, heartCX, heartCY, 5, '#ff69b4');
+
+            // Smaller floating hearts above
+            drawPixelHeart(charCtx, heartCX - 35, heartCY - 40, 3, '#ff99cc');
+            drawPixelHeart(charCtx, heartCX + 40, heartCY - 35, 3, '#ff99cc');
+        }
+
+        // ============ GO ============
+        drawBackground();
+        drawCharacters();
+
+        // ============ SPOTIFY PLAYER ============
+        const locationSongs = {
+            beach: 'https://open.spotify.com/embed/track/49wHCjiu34kM3VRgumQ1tJ?utm_source=generator&autoplay=true',
+            park: 'https://open.spotify.com/embed/track/3mqRLlD9j92BBv1ueFhJ1l?utm_source=generator&autoplay=true',
+            city: 'https://open.spotify.com/embed/track/7AzFID6u1b3zIWbd9pb8Dk?utm_source=generator&autoplay=true',
+            mountain: 'https://open.spotify.com/embed/track/6rHh8urosEFRI67xVa6fzU?utm_source=generator&theme=0&autoplay=true',
+            home: 'https://open.spotify.com/embed/track/0cBPuDA3xUjR4Vh9o7CKy8?utm_source=generator&autoplay=true',
+            rooftop: 'https://open.spotify.com/embed/track/2bEbTqj36jmuwMhvvCRC2y?utm_source=generator&autoplay=true'
+        };
+        document.getElementById('spotifyPlayer').src =
+            locationSongs[dateSettings.location] || locationSongs.beach;
+
+        // ============ FLOATING HEARTS ============
+        function spawnHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'floating-heart';
+            heart.textContent = ['💕','💖','💗','❤️','💘'][Math.floor(Math.random() * 5)];
+            heart.style.left = Math.random() * 100 + '%';
+            heart.style.bottom = '-30px';
+            heart.style.animationDuration = (3 + Math.random() * 3) + 's';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 6000);
+        }
+        setInterval(spawnHeart, 800);
+        for (let i = 0; i < 8; i++) setTimeout(spawnHeart, i * 300);
+    </script>
+</body>
+</html>

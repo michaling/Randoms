@@ -117,60 +117,6 @@
             color: white;
             transition: all 0.3s ease;
         }
-
-        .celebration {
-            display: none;
-        }
-
-        .celebration.active {
-            display: block;
-            animation: fadeIn 0.5s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .celebration h2 {
-            color: #4a90e2;
-            font-size: 2.5em;
-            margin: 20px 0;
-            text-shadow: 4px 4px 0px rgba(255, 105, 180, 0.3);
-            letter-spacing: 3px;
-        }
-
-        .gif-container {
-            margin: 20px 0;
-            overflow: hidden;
-            display: inline-block;
-        }
-
-        .gif-container img {
-            width: auto;
-            max-width: 100%;
-            height: auto;
-            display: block;
-            image-rendering: pixelated;
-            image-rendering: -moz-crisp-edges;
-            image-rendering: crisp-edges;
-        }
-
-        .confetti {
-            position: fixed;
-            width: 12px;
-            height: 12px;
-            background: #ff69b4;
-            position: absolute;
-            animation: confetti-fall 3s linear infinite;
-        }
-
-        @keyframes confetti-fall {
-            to {
-                transform: translateY(100vh) rotate(360deg);
-                opacity: 0;
-            }
-        }
     </style>
 </head>
 <body>
@@ -187,22 +133,11 @@
                 <button id="noBtn">No</button>
             </div>
         </div>
-
-        <div class="celebration" id="celebration">
-            <div class="gif-container">
-                <img src="https://mir-s3-cdn-cf.behance.net/project_modules/fs/9fe826107812099.5faf8831d90b0.gif" alt="Happy pixel art celebration">
-            </div>
-            <p style="font-size: 1.5em; color: #4a90e2; margin-top: 20px; text-shadow: 2px 2px 0px rgba(255, 105, 180, 0.3);">
-                When you’re a kid, you assume your parents are soulmates. My kids are gonna be right about that ♥
-            </p>
-        </div>
     </div>
 
     <script>
         const yesBtn = document.getElementById('yesBtn');
         const noBtn = document.getElementById('noBtn');
-        const questionSection = document.getElementById('question-section');
-        const celebration = document.getElementById('celebration');
         const buttonContainer = document.getElementById('buttonContainer');
         const snarkyComment = document.getElementById('snarkyComment');
 
@@ -229,6 +164,8 @@
             "I'm not convinced you know how to read",
             // Gilmore Girls
             "Oy with the poodles already",
+            // Arrested Development (adapted)
+            "I don’t understand the answer, and I won’t respond to it",
             // The office
             "That could have gone one in two ways, but I never expected you to click No",
             // New Girl
@@ -250,6 +187,10 @@
             if (commentIndex >= snarkyComments.length) {
                 // We've cycled through all comments, hide the No button
                 noBtn.style.display = 'none';
+
+                // Make the Yes button available again
+                yesBtn.disabled = false;
+                yesBtn.style.cursor = 'pointer';
                 return;
             }
             
@@ -267,29 +208,14 @@
 
         // Handle Yes button click
         yesBtn.addEventListener('click', () => {
-            questionSection.style.display = 'none';
-            celebration.classList.add('active');
-            
-            // Create confetti effect
-            for (let i = 0; i < 50; i++) {
-                setTimeout(() => {
-                    createConfetti();
-                }, i * 100);
+            if (noBtn.style.display === 'none') {
+                // Navigate to celebration page
+                window.location.href = 'celebration.html';
+            } else {
+                // Display gag message
+                snarkyComment.textContent = "Can't you see we're doing a bit here? Rude.";
             }
         });
-
-        function createConfetti() {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            confetti.style.left = Math.random() * 100 + '%';
-            confetti.style.background = ['#ff69b4', '#4a90e2', '#ffc0cb', '#87ceeb'][Math.floor(Math.random() * 4)];
-            confetti.style.animationDelay = Math.random() * 3 + 's';
-            document.body.appendChild(confetti);
-            
-            setTimeout(() => {
-                confetti.remove();
-            }, 3000);
-        }
     </script>
 </body>
 </html>

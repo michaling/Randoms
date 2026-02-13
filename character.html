@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Characters 💕</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #a8d8ff;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            overflow-y: auto;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .page-title {
+            color: #4a90e2;
+            font-size: 2.2em;
+            text-shadow: 4px 4px 0px rgba(255, 105, 180, 0.3);
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .panels {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            text-align: center;
+            padding: 30px;
+            background: #fff;
+            border: 8px solid #4a90e2;
+            box-shadow: 
+                0 0 0 4px #fff,
+                0 0 0 12px #ff69b4,
+                8px 8px 0 12px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+        }
+
+        .panel-heart {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 40px;
+        }
+
+        .panel h2 {
+            color: #4a90e2;
+            font-size: 1.5em;
+            margin: 15px 0 15px;
+            text-shadow: 3px 3px 0px rgba(255, 105, 180, 0.3);
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .character-preview {
+            margin: 15px auto;
+        }
+
+        canvas {
+            border: 4px solid #4a90e2;
+            background: #f0f8ff;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .customization-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .option-group {
+            border: 3px solid #4a90e2;
+            padding: 10px;
+            background: #f0f8ff;
+        }
+
+        .option-group label {
+            display: block;
+            color: #4a90e2;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .color-options, .style-options {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #000;
+            cursor: pointer;
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .color-swatch:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .color-swatch.selected {
+            border-color: #ff69b4;
+            outline: 3px solid #ff69b4;
+            outline-offset: 1px;
+        }
+
+        .style-btn {
+            padding: 6px 12px;
+            font-size: 0.8em;
+            border: 3px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            background: #4a90e2;
+            color: white;
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .style-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .style-btn.selected {
+            background: #ff69b4;
+            border-color: #ff69b4;
+        }
+
+        .save-btn {
+            margin-top: 30px;
+            padding: 15px 50px;
+            font-size: 1.3em;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            transition: transform 0.1s;
+            box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: #4a90e2;
+            color: white;
+        }
+
+        .save-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .save-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 900px) {
+            .panels {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <h1 class="page-title">Design Your Couple! 💕</h1>
+
+        <div class="panels">
+            <!-- YOUR CHARACTER -->
+            <div class="panel" id="panel-you">
+                <div class="panel-heart">🧑</div>
+                <h2>You</h2>
+                <div class="character-preview">
+                    <canvas id="youCanvas" width="200" height="320"></canvas>
+                </div>
+                <div class="customization-panel">
+                    <div class="option-group">
+                        <label>Body Type</label>
+                        <div class="style-options" id="you-bodyTypes">
+                            <button class="style-btn selected" data-style="male">Male</button>
+                            <button class="style-btn" data-style="female">Female</button>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Skin Color</label>
+                        <div class="color-options" id="you-skinColors">
+                            <div class="color-swatch selected" data-color="#FFDCB5" style="background:#FFDCB5"></div>
+                            <div class="color-swatch" data-color="#F5C5A3" style="background:#F5C5A3"></div>
+                            <div class="color-swatch" data-color="#D4A373" style="background:#D4A373"></div>
+                            <div class="color-swatch" data-color="#A67C52" style="background:#A67C52"></div>
+                            <div class="color-swatch" data-color="#8B5E3C" style="background:#8B5E3C"></div>
+                            <div class="color-swatch" data-color="#6B3F2A" style="background:#6B3F2A"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Hair Style</label>
+                        <div class="style-options" id="you-hairStyles">
+                            <button class="style-btn selected" data-style="short">Short</button>
+                            <button class="style-btn" data-style="long">Long</button>
+                            <button class="style-btn" data-style="curly">Curly</button>
+                            <button class="style-btn" data-style="ponytail">Ponytail</button>
+                            <button class="style-btn" data-style="mohawk">Mohawk</button>
+                            <button class="style-btn" data-style="bald">Bald</button>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Hair Color</label>
+                        <div class="color-options" id="you-hairColors">
+                            <div class="color-swatch selected" data-color="#3B2314" style="background:#3B2314"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                            <div class="color-swatch" data-color="#DAA520" style="background:#DAA520"></div>
+                            <div class="color-swatch" data-color="#FF6347" style="background:#FF6347"></div>
+                            <div class="color-swatch" data-color="#FFD700" style="background:#FFD700"></div>
+                            <div class="color-swatch" data-color="#1A1A1A" style="background:#1A1A1A"></div>
+                            <div class="color-swatch" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#4a90e2" style="background:#4a90e2"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Eye Color</label>
+                        <div class="color-options" id="you-eyeColors">
+                            <div class="color-swatch selected" data-color="#3B2314" style="background:#3B2314"></div>
+                            <div class="color-swatch" data-color="#4a90e2" style="background:#4a90e2"></div>
+                            <div class="color-swatch" data-color="#32CD32" style="background:#32CD32"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Shirt</label>
+                        <div class="color-options" id="you-shirtColors">
+                            <div class="color-swatch selected" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#4a90e2" style="background:#4a90e2"></div>
+                            <div class="color-swatch" data-color="#FF6347" style="background:#FF6347"></div>
+                            <div class="color-swatch" data-color="#32CD32" style="background:#32CD32"></div>
+                            <div class="color-swatch" data-color="#FFD700" style="background:#FFD700"></div>
+                            <div class="color-swatch" data-color="#9B59B6" style="background:#9B59B6"></div>
+                            <div class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF"></div>
+                            <div class="color-swatch" data-color="#1A1A1A" style="background:#1A1A1A"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Pants</label>
+                        <div class="color-options" id="you-pantsColors">
+                            <div class="color-swatch selected" data-color="#4169E1" style="background:#4169E1"></div>
+                            <div class="color-swatch" data-color="#1A1A1A" style="background:#1A1A1A"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                            <div class="color-swatch" data-color="#556B2F" style="background:#556B2F"></div>
+                            <div class="color-swatch" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#9B59B6" style="background:#9B59B6"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Shoes</label>
+                        <div class="color-options" id="you-shoeColors">
+                            <div class="color-swatch selected" data-color="#333333" style="background:#333333"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                            <div class="color-swatch" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF"></div>
+                            <div class="color-swatch" data-color="#FF0000" style="background:#FF0000"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- YOUR DATE -->
+            <div class="panel" id="panel-date">
+                <div class="panel-heart">💖</div>
+                <h2>Your Date</h2>
+                <div class="character-preview">
+                    <canvas id="dateCanvas" width="200" height="320"></canvas>
+                </div>
+                <div class="customization-panel">
+                    <div class="option-group">
+                        <label>Body Type</label>
+                        <div class="style-options" id="date-bodyTypes">
+                            <button class="style-btn selected" data-style="male">Male</button>
+                            <button class="style-btn" data-style="female">Female</button>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Skin Color</label>
+                        <div class="color-options" id="date-skinColors">
+                            <div class="color-swatch selected" data-color="#FFDCB5" style="background:#FFDCB5"></div>
+                            <div class="color-swatch" data-color="#F5C5A3" style="background:#F5C5A3"></div>
+                            <div class="color-swatch" data-color="#D4A373" style="background:#D4A373"></div>
+                            <div class="color-swatch" data-color="#A67C52" style="background:#A67C52"></div>
+                            <div class="color-swatch" data-color="#8B5E3C" style="background:#8B5E3C"></div>
+                            <div class="color-swatch" data-color="#6B3F2A" style="background:#6B3F2A"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Hair Style</label>
+                        <div class="style-options" id="date-hairStyles">
+                            <button class="style-btn selected" data-style="short">Short</button>
+                            <button class="style-btn" data-style="long">Long</button>
+                            <button class="style-btn" data-style="curly">Curly</button>
+                            <button class="style-btn" data-style="ponytail">Ponytail</button>
+                            <button class="style-btn" data-style="mohawk">Mohawk</button>
+                            <button class="style-btn" data-style="bald">Bald</button>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Hair Color</label>
+                        <div class="color-options" id="date-hairColors">
+                            <div class="color-swatch selected" data-color="#3B2314" style="background:#3B2314"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                            <div class="color-swatch" data-color="#DAA520" style="background:#DAA520"></div>
+                            <div class="color-swatch" data-color="#FF6347" style="background:#FF6347"></div>
+                            <div class="color-swatch" data-color="#FFD700" style="background:#FFD700"></div>
+                            <div class="color-swatch" data-color="#1A1A1A" style="background:#1A1A1A"></div>
+                            <div class="color-swatch" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#4a90e2" style="background:#4a90e2"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Eye Color</label>
+                        <div class="color-options" id="date-eyeColors">
+                            <div class="color-swatch selected" data-color="#3B2314" style="background:#3B2314"></div>
+                            <div class="color-swatch" data-color="#4a90e2" style="background:#4a90e2"></div>
+                            <div class="color-swatch" data-color="#32CD32" style="background:#32CD32"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Shirt</label>
+                        <div class="color-options" id="date-shirtColors">
+                            <div class="color-swatch selected" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#4a90e2" style="background:#4a90e2"></div>
+                            <div class="color-swatch" data-color="#FF6347" style="background:#FF6347"></div>
+                            <div class="color-swatch" data-color="#32CD32" style="background:#32CD32"></div>
+                            <div class="color-swatch" data-color="#FFD700" style="background:#FFD700"></div>
+                            <div class="color-swatch" data-color="#9B59B6" style="background:#9B59B6"></div>
+                            <div class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF"></div>
+                            <div class="color-swatch" data-color="#1A1A1A" style="background:#1A1A1A"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Pants</label>
+                        <div class="color-options" id="date-pantsColors">
+                            <div class="color-swatch selected" data-color="#4169E1" style="background:#4169E1"></div>
+                            <div class="color-swatch" data-color="#1A1A1A" style="background:#1A1A1A"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                            <div class="color-swatch" data-color="#556B2F" style="background:#556B2F"></div>
+                            <div class="color-swatch" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#9B59B6" style="background:#9B59B6"></div>
+                        </div>
+                    </div>
+                    <div class="option-group">
+                        <label>Shoes</label>
+                        <div class="color-options" id="date-shoeColors">
+                            <div class="color-swatch selected" data-color="#333333" style="background:#333333"></div>
+                            <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                            <div class="color-swatch" data-color="#FF69B4" style="background:#FF69B4"></div>
+                            <div class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF"></div>
+                            <div class="color-swatch" data-color="#FF0000" style="background:#FF0000"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="save-btn" id="saveBtn">Next 💖</button>
+    </div>
+
+    <script>
+        const P = 8; // pixel block size
+
+        // --- Character state ---
+        const youChar = {
+            skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+            shirtColor: '#FF69B4', pantsColor: '#4169E1', eyeColor: '#3B2314', shoeColor: '#333333',
+            bodyType: 'male'
+        };
+        const dateChar = {
+            skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+            shirtColor: '#FF69B4', pantsColor: '#4169E1', eyeColor: '#3B2314', shoeColor: '#333333',
+            bodyType: 'male'
+        };
+
+        const youCanvas = document.getElementById('youCanvas');
+        const youCtx = youCanvas.getContext('2d');
+        const dateCanvas = document.getElementById('dateCanvas');
+        const dateCtx = dateCanvas.getContext('2d');
+
+        // --- Drawing helpers ---
+        function px(ctx, x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * P, y * P, P, P);
+        }
+        function rect(ctx, x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * P, y * P, w * P, h * P);
+        }
+        function darken(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.max(0, r - amt); g = Math.max(0, g - amt); b = Math.max(0, b - amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+        function lighten(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+
+        function drawCharacter(ctx, canvas, c) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const skin = c.skinColor, hair = c.hairColor, shirt = c.shirtColor;
+            const pants = c.pantsColor, eyes = c.eyeColor, shoe = c.shoeColor;
+            const ol = '#1A1A1A';
+            const isFemale = c.bodyType === 'female';
+            const skinDark = darken(skin, 35);
+            const skinLight = lighten(skin, 20);
+            const shirtDark = darken(shirt, 40);
+            const shirtLight = lighten(shirt, 30);
+            const pantsDark = darken(pants, 30);
+            // Lip color: subtle for male, rosier for female
+            const lipColor = isFemale ? '#D4707A' : darken(skin, 25);
+
+            // === HAIR BACK LAYER ===
+            if (c.hairStyle === 'long') {
+                rect(ctx, 5, 2, 14, 5, hair);
+                rect(ctx, 4, 5, 16, 2, hair);
+                rect(ctx, 3, 7, 3, 14, hair);
+                rect(ctx, 18, 7, 3, 14, hair);
+            }
+            if (c.hairStyle === 'ponytail') {
+                rect(ctx, 5, 2, 14, 5, hair);
+                rect(ctx, 4, 5, 16, 2, hair);
+                rect(ctx, 17, 7, 4, 2, hair);
+                rect(ctx, 20, 9, 3, 8, hair);
+                rect(ctx, 19, 17, 2, 3, hair);
+            }
+
+            // === HEAD ===
+            rect(ctx, 7, 6, 10, 12, skin);     // face fill
+            rect(ctx, 8, 5, 8, 1, ol);          // top outline
+            px(ctx, 7, 5, ol);                   // top-left corner
+            px(ctx, 16, 5, ol);                  // top-right corner
+            rect(ctx, 6, 6, 1, 12, ol);         // left outline
+            rect(ctx, 17, 6, 1, 12, ol);        // right outline
+            rect(ctx, 7, 18, 10, 1, ol);        // chin outline
+            // Rounded jaw
+            px(ctx, 6, 17, ol);
+            px(ctx, 17, 17, ol);
+            // Cheeks (subtle blush)
+            rect(ctx, 7, 14, 2, 1, lighten(skin, 12));
+            rect(ctx, 15, 14, 2, 1, lighten(skin, 12));
+
+            // === EYEBROWS ===
+            if (isFemale) {
+                // Thinner, arched brows
+                rect(ctx, 8, 9, 3, 1, darken(hair, 10));
+                rect(ctx, 13, 9, 3, 1, darken(hair, 10));
+            } else {
+                // Thicker brows
+                rect(ctx, 8, 8, 3, 1, darken(hair, 20));
+                rect(ctx, 13, 8, 3, 1, darken(hair, 20));
+                rect(ctx, 8, 9, 3, 1, darken(hair, 10));
+                rect(ctx, 13, 9, 3, 1, darken(hair, 10));
+            }
+
+            // === EYES ===
+            if (isFemale) {
+                // Slightly larger, rounder eyes
+                rect(ctx, 8, 10, 3, 3, '#FFFFFF');
+                rect(ctx, 13, 10, 3, 3, '#FFFFFF');
+                rect(ctx, 9, 10, 2, 3, eyes);
+                rect(ctx, 14, 10, 2, 3, eyes);
+                // Pupils
+                px(ctx, 9, 11, darken(eyes, 30));
+                px(ctx, 14, 11, darken(eyes, 30));
+                // Shine
+                px(ctx, 10, 10, '#FFFFFF');
+                px(ctx, 15, 10, '#FFFFFF');
+                // Eyelashes
+                px(ctx, 8, 9, ol);
+                px(ctx, 15, 9, ol);
+            } else {
+                // Standard male eyes
+                rect(ctx, 8, 10, 3, 2, '#FFFFFF');
+                rect(ctx, 13, 10, 3, 2, '#FFFFFF');
+                rect(ctx, 9, 10, 2, 2, eyes);
+                rect(ctx, 14, 10, 2, 2, eyes);
+                // Shine
+                px(ctx, 10, 10, '#FFFFFF');
+                px(ctx, 15, 10, '#FFFFFF');
+            }
+
+            // === NOSE ===
+            px(ctx, 11, 13, skinDark);
+            px(ctx, 12, 14, darken(skin, 18));
+
+            // === MOUTH ===
+            rect(ctx, 10, 16, 4, 1, lipColor);
+
+            // === HAIR FRONT LAYER ===
+            if (c.hairStyle === 'short') {
+                // Short hair — less bangs, sides reaching the ears
+                rect(ctx, 8, 1, 8, 1, hair);       // top
+                rect(ctx, 7, 2, 10, 1, hair);       // crown
+                rect(ctx, 6, 3, 12, 3, hair);       // main volume
+                // Sides reaching down to the ears
+                rect(ctx, 5, 4, 1, 9, hair);        // left side down to ears
+                rect(ctx, 18, 4, 1, 9, hair);       // right side down to ears
+                // Small swept fringe — just a few pixels on one side
+                rect(ctx, 7, 6, 2, 1, hair);        // small left fringe
+                // Sideburns tapering near ears
+                px(ctx, 6, 6, hair);
+                px(ctx, 6, 7, hair);
+                px(ctx, 6, 8, hair);
+                px(ctx, 17, 6, hair);
+                px(ctx, 17, 7, hair);
+                px(ctx, 17, 8, hair);
+                // Shading
+                px(ctx, 10, 2, darken(hair, 25));
+                px(ctx, 8, 4, darken(hair, 15));
+                px(ctx, 16, 4, darken(hair, 15));
+                px(ctx, 5, 8, darken(hair, 15));
+                px(ctx, 18, 8, darken(hair, 15));
+                // Highlight
+                px(ctx, 13, 2, lighten(hair, 20));
+            } else if (c.hairStyle === 'long') {
+                rect(ctx, 5, 2, 14, 5, hair);
+                rect(ctx, 6, 1, 12, 1, hair);
+            } else if (c.hairStyle === 'curly') {
+                // Big curly hair with pronounced curl bumps
+                rect(ctx, 5, 2, 14, 5, hair);      // main top
+                rect(ctx, 6, 0, 12, 2, hair);       // big top poof
+                rect(ctx, 8, -1, 8, 1, hair);       // extra height
+                // Left curls — jagged/bumpy edge
+                rect(ctx, 3, 3, 3, 2, hair);
+                rect(ctx, 2, 5, 3, 2, hair);
+                rect(ctx, 3, 7, 3, 2, hair);
+                rect(ctx, 2, 9, 3, 2, hair);
+                rect(ctx, 3, 11, 3, 2, hair);
+                // Right curls — jagged/bumpy edge
+                rect(ctx, 18, 3, 3, 2, hair);
+                rect(ctx, 19, 5, 3, 2, hair);
+                rect(ctx, 18, 7, 3, 2, hair);
+                rect(ctx, 19, 9, 3, 2, hair);
+                rect(ctx, 18, 11, 3, 2, hair);
+                // Curl texture highlights
+                px(ctx, 3, 4, darken(hair, 20));
+                px(ctx, 3, 8, darken(hair, 20));
+                px(ctx, 20, 4, darken(hair, 20));
+                px(ctx, 20, 8, darken(hair, 20));
+                px(ctx, 8, 0, darken(hair, 15));
+                px(ctx, 13, 0, darken(hair, 15));
+            } else if (c.hairStyle === 'ponytail') {
+                rect(ctx, 6, 3, 12, 4, hair);
+                rect(ctx, 7, 2, 10, 1, hair);
+                rect(ctx, 5, 5, 2, 3, hair);
+            } else if (c.hairStyle === 'mohawk') {
+                rect(ctx, 10, 0, 4, 6, hair);
+                rect(ctx, 9, 1, 6, 2, hair);
+                rect(ctx, 6, 4, 12, 3, hair);
+            }
+            // bald = nothing
+
+            // === EARS (drawn after hair so they're always visible) ===
+            rect(ctx, 5, 10, 1, 3, skin);
+            rect(ctx, 18, 10, 1, 3, skin);
+            px(ctx, 5, 11, skinDark);
+            px(ctx, 18, 11, skinDark);
+
+            // === NECK ===
+            if (isFemale) {
+                rect(ctx, 10, 19, 4, 2, skin);
+            } else {
+                rect(ctx, 9, 19, 6, 2, skin);
+            }
+
+            if (isFemale) {
+                // === FEMALE BODY ===
+
+                // Shirt / torso — narrower shoulders, waist nip, wider hips
+                rect(ctx, 6, 21, 12, 9, shirt);
+                // Shoulder outline
+                rect(ctx, 5, 21, 1, 8, ol);
+                rect(ctx, 18, 21, 1, 8, ol);
+                rect(ctx, 6, 21, 12, 1, ol);
+                // Chest / breasts
+                rect(ctx, 7, 22, 4, 3, shirtLight);
+                rect(ctx, 13, 22, 4, 3, shirtLight);
+                // Chest underline shading
+                rect(ctx, 7, 25, 4, 1, shirtDark);
+                rect(ctx, 13, 25, 4, 1, shirtDark);
+                // Chest side shading
+                px(ctx, 7, 23, shirtDark);
+                px(ctx, 16, 23, shirtDark);
+                // Waist curve (slightly narrower in middle)
+                rect(ctx, 6, 26, 1, 2, shirtDark);
+                rect(ctx, 17, 26, 1, 2, shirtDark);
+                // Collar
+                rect(ctx, 9, 21, 6, 1, shirtDark);
+                // Shirt fold
+                rect(ctx, 11, 24, 1, 3, shirtDark);
+                // Shirt highlight
+                rect(ctx, 8, 23, 2, 1, shirtLight);
+
+                // Arms (slimmer)
+                rect(ctx, 3, 22, 3, 6, skin);
+                rect(ctx, 18, 22, 3, 6, skin);
+                // Sleeves
+                rect(ctx, 3, 22, 3, 2, shirt);
+                rect(ctx, 18, 22, 3, 2, shirt);
+                rect(ctx, 3, 23, 3, 1, shirtDark);
+                rect(ctx, 18, 23, 3, 1, shirtDark);
+                // Hands
+                rect(ctx, 3, 28, 3, 2, skin);
+                rect(ctx, 18, 28, 3, 2, skin);
+                px(ctx, 2, 29, skin);
+                px(ctx, 21, 29, skin);
+                rect(ctx, 3, 30, 3, 1, ol);
+                rect(ctx, 18, 30, 3, 1, ol);
+                px(ctx, 2, 30, ol);
+                px(ctx, 21, 30, ol);
+
+                // Skirt / pants area — wider hips
+                rect(ctx, 4, 29, 16, 1, darken(pants, 50)); // belt
+                px(ctx, 11, 29, '#DAA520');
+                px(ctx, 12, 29, '#DAA520');
+                rect(ctx, 4, 30, 16, 7, pants);
+                // Hips outline
+                rect(ctx, 3, 30, 1, 7, ol);
+                rect(ctx, 20, 30, 1, 7, ol);
+                // Skirt/pants split
+                rect(ctx, 11, 33, 2, 4, pantsDark);
+                // Knee shading
+                rect(ctx, 6, 34, 3, 1, pantsDark);
+                rect(ctx, 15, 34, 3, 1, pantsDark);
+
+                // Shoes
+                rect(ctx, 3, 37, 8, 2, shoe);
+                rect(ctx, 13, 37, 8, 2, shoe);
+                rect(ctx, 2, 37, 1, 2, ol);
+                rect(ctx, 11, 37, 1, 2, ol);
+                rect(ctx, 12, 37, 1, 2, ol);
+                rect(ctx, 21, 37, 1, 2, ol);
+                rect(ctx, 2, 39, 10, 1, ol);
+                rect(ctx, 12, 39, 10, 1, ol);
+                rect(ctx, 3, 38, 8, 1, darken(shoe, 40));
+                rect(ctx, 13, 38, 8, 1, darken(shoe, 40));
+                px(ctx, 4, 37, lighten(shoe, 40));
+                px(ctx, 14, 37, lighten(shoe, 40));
+            } else {
+                // === MALE BODY ===
+
+                // Shirt / torso — broad shoulders
+                rect(ctx, 5, 21, 14, 9, shirt);
+                rect(ctx, 4, 21, 1, 9, ol);
+                rect(ctx, 19, 21, 1, 9, ol);
+                rect(ctx, 5, 21, 14, 1, ol);
+                // Collar
+                rect(ctx, 9, 21, 6, 1, shirtDark);
+                px(ctx, 8, 21, shirtDark);
+                px(ctx, 15, 21, shirtDark);
+                // Shirt fold details
+                rect(ctx, 11, 24, 1, 4, shirtDark);
+                rect(ctx, 13, 25, 1, 3, darken(shirt, 15));
+                // Shirt highlight
+                rect(ctx, 8, 23, 2, 1, shirtLight);
+
+                // Belt
+                rect(ctx, 5, 29, 14, 1, darken(pants, 50));
+                px(ctx, 11, 29, '#DAA520');
+                px(ctx, 12, 29, '#DAA520');
+
+                // Arms (broader)
+                rect(ctx, 2, 22, 3, 7, skin);
+                rect(ctx, 19, 22, 3, 7, skin);
+                // Sleeves
+                rect(ctx, 2, 22, 3, 3, shirt);
+                rect(ctx, 19, 22, 3, 3, shirt);
+                rect(ctx, 2, 24, 3, 1, shirtDark);
+                rect(ctx, 19, 24, 3, 1, shirtDark);
+                // Hands
+                rect(ctx, 2, 29, 3, 2, skin);
+                rect(ctx, 19, 29, 3, 2, skin);
+                px(ctx, 1, 30, skin);
+                px(ctx, 22, 30, skin);
+                rect(ctx, 2, 31, 3, 1, ol);
+                rect(ctx, 19, 31, 3, 1, ol);
+                px(ctx, 1, 31, ol);
+                px(ctx, 22, 31, ol);
+
+                // Pants
+                rect(ctx, 5, 30, 14, 7, pants);
+                rect(ctx, 4, 30, 1, 7, ol);
+                rect(ctx, 19, 30, 1, 7, ol);
+                rect(ctx, 11, 33, 2, 4, pantsDark);
+                px(ctx, 6, 31, pantsDark);
+                px(ctx, 6, 32, pantsDark);
+                px(ctx, 17, 31, pantsDark);
+                px(ctx, 17, 32, pantsDark);
+                rect(ctx, 7, 34, 3, 1, pantsDark);
+                rect(ctx, 14, 34, 3, 1, pantsDark);
+
+                // Shoes
+                rect(ctx, 4, 37, 7, 2, shoe);
+                rect(ctx, 13, 37, 7, 2, shoe);
+                rect(ctx, 3, 37, 1, 2, ol);
+                rect(ctx, 11, 37, 1, 2, ol);
+                rect(ctx, 12, 37, 1, 2, ol);
+                rect(ctx, 20, 37, 1, 2, ol);
+                rect(ctx, 3, 39, 9, 1, ol);
+                rect(ctx, 12, 39, 9, 1, ol);
+                rect(ctx, 4, 38, 7, 1, darken(shoe, 40));
+                rect(ctx, 13, 38, 7, 1, darken(shoe, 40));
+                px(ctx, 5, 37, lighten(shoe, 40));
+                px(ctx, 14, 37, lighten(shoe, 40));
+                px(ctx, 3, 38, ol);
+                px(ctx, 20, 38, ol);
+            }
+        }
+
+        // === Wire up controls for a given panel ===
+        function setupPanel(prefix, charObj, ctx, canvas) {
+            function wire(optionId, prop) {
+                const el = document.getElementById(optionId);
+                if (!el) return;
+                const swatches = el.querySelectorAll('.color-swatch');
+                if (swatches.length) {
+                    swatches.forEach(s => s.addEventListener('click', () => {
+                        swatches.forEach(sw => sw.classList.remove('selected'));
+                        s.classList.add('selected');
+                        charObj[prop] = s.dataset.color;
+                        drawCharacter(ctx, canvas, charObj);
+                    }));
+                }
+                const btns = el.querySelectorAll('.style-btn');
+                if (btns.length) {
+                    btns.forEach(b => b.addEventListener('click', () => {
+                        btns.forEach(bb => bb.classList.remove('selected'));
+                        b.classList.add('selected');
+                        charObj[prop] = b.dataset.style;
+                        drawCharacter(ctx, canvas, charObj);
+                    }));
+                }
+            }
+            wire(prefix + '-bodyTypes', 'bodyType');
+            wire(prefix + '-skinColors', 'skinColor');
+            wire(prefix + '-hairStyles', 'hairStyle');
+            wire(prefix + '-hairColors', 'hairColor');
+            wire(prefix + '-eyeColors', 'eyeColor');
+            wire(prefix + '-shirtColors', 'shirtColor');
+            wire(prefix + '-pantsColors', 'pantsColor');
+            wire(prefix + '-shoeColors', 'shoeColor');
+        }
+
+        setupPanel('you', youChar, youCtx, youCanvas);
+        setupPanel('date', dateChar, dateCtx, dateCanvas);
+
+        // === Save ===
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            localStorage.setItem('valentineYou', JSON.stringify(youChar));
+            localStorage.setItem('valentineDate', JSON.stringify(dateChar));
+            window.location.href = 'date-settings.html';
+        });
+
+        // === Load saved state ===
+        function loadSaved(key, charObj, prefix) {
+            const saved = localStorage.getItem(key);
+            if (!saved) return;
+            Object.assign(charObj, JSON.parse(saved));
+            // Sync UI
+            const panel = document.getElementById('panel-' + (prefix === 'you' ? 'you' : 'date'));
+            panel.querySelectorAll('.color-options').forEach(group => {
+                const prop = group.id.replace(prefix + '-', '').replace('Colors', 'Color');
+                group.querySelectorAll('.color-swatch').forEach(s => {
+                    s.classList.toggle('selected', s.dataset.color === charObj[prop]);
+                });
+            });
+            panel.querySelectorAll('.style-options').forEach(group => {
+                group.querySelectorAll('.style-btn').forEach(b => {
+                    const prop = group.id.replace(prefix + '-', '');
+                    if (prop === 'bodyTypes') {
+                        b.classList.toggle('selected', b.dataset.style === charObj.bodyType);
+                    } else if (prop === 'hairStyles') {
+                        b.classList.toggle('selected', b.dataset.style === charObj.hairStyle);
+                    }
+                });
+            });
+        }
+        loadSaved('valentineYou', youChar, 'you');
+        loadSaved('valentineDate', dateChar, 'date');
+
+        // Initial draw
+        drawCharacter(youCtx, youCanvas, youChar);
+        drawCharacter(dateCtx, dateCanvas, dateChar);
+    </script>
+</body>
+</html>
