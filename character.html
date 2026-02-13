@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Your Characters 💕</title>
+    <title>Create Your Characters </title>
+    <script src="shared.js"></script>
     <style>
         * {
             margin: 0;
@@ -800,7 +801,7 @@
         document.getElementById('saveBtn').addEventListener('click', () => {
             localStorage.setItem('valentineYou', JSON.stringify(youChar));
             localStorage.setItem('valentineDate', JSON.stringify(dateChar));
-            window.location.href = 'date-settings.html';
+            window.location.href = 'cat.html';
         });
 
         // === Load saved state ===

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Our Date 💕</title>
+    <title>Our Date</title>
+    <script src="shared.js"></script>
     <style>
         * {
             margin: 0;
@@ -119,6 +120,7 @@
         const dateSettings = JSON.parse(localStorage.getItem('valentineDateSettings')) || {
             location: 'beach'
         };
+        const catChar = JSON.parse(localStorage.getItem('valentineCat')) || null;
 
         const bgCanvas = document.getElementById('bgCanvas');
         const bgCtx = bgCanvas.getContext('2d');
@@ -338,6 +340,69 @@
             }
         }
 
+        // ============ DRAW CAT (small, for scene) ============
+        function drawCatAt(c, ox, oy, cat) {
+            const _px = (x, y, col) => px(c, ox + x, oy + y, col);
+            const _rect = (x, y, w, h, col) => rect(c, ox + x, oy + y, w, h, col);
+
+            const fur = cat.furColor;
+            const eyes = cat.eyeColor;
+            const ol = '#1A1A1A';
+            const furDark = darken(fur, 35);
+            const furLight = lighten(fur, 30);
+            const nose = '#FFB6C1';
+
+            // Ears
+            _px(1, 0, ol); _px(2, 0, ol);
+            _px(0, 1, ol); _px(1, 1, fur); _px(2, 1, fur); _px(3, 1, ol);
+            _px(8, 0, ol); _px(9, 0, ol);
+            _px(7, 1, ol); _px(8, 1, fur); _px(9, 1, fur); _px(10, 1, ol);
+
+            // Head
+            _rect(1, 2, 9, 6, fur);
+            _rect(0, 2, 1, 6, ol); _rect(10, 2, 1, 6, ol);
+            _rect(1, 2, 9, 1, ol); _rect(1, 7, 9, 1, ol);
+
+            // Forehead highlight
+            _px(5, 3, furLight);
+
+            // Eyes
+            _rect(2, 4, 2, 2, '#FFFFFF');
+            _rect(7, 4, 2, 2, '#FFFFFF');
+            _px(3, 4, eyes); _px(3, 5, eyes);
+            _px(8, 4, eyes); _px(8, 5, eyes);
+            _px(3, 5, darken(eyes, 40));
+            _px(8, 5, darken(eyes, 40));
+
+            // Nose
+            _px(5, 5, nose);
+
+            // Mouth
+            _px(4, 6, ol); _px(5, 6, ol); _px(6, 6, ol);
+
+            // Whiskers
+            _px(0, 5, ol); _px(10, 5, ol);
+
+            // Body
+            _rect(2, 8, 7, 4, fur);
+            _rect(1, 8, 1, 4, ol); _rect(9, 8, 1, 4, ol);
+            // Belly
+            _rect(4, 9, 3, 2, furLight);
+
+            // Legs
+            _rect(2, 12, 2, 2, fur); _rect(7, 12, 2, 2, fur);
+            _rect(1, 12, 1, 2, ol); _rect(4, 12, 1, 2, ol);
+            _rect(6, 12, 1, 2, ol); _rect(9, 12, 1, 2, ol);
+            // Paws
+            _rect(2, 13, 2, 1, furLight); _rect(7, 13, 2, 1, furLight);
+            _rect(1, 14, 4, 1, ol); _rect(6, 14, 4, 1, ol);
+
+            // Tail
+            _px(9, 9, fur); _px(10, 8, fur); _px(11, 7, fur); _px(12, 6, fur);
+            _px(10, 9, ol); _px(11, 8, ol); _px(12, 7, ol); _px(13, 6, ol);
+            _px(9, 8, ol); _px(10, 7, ol); _px(11, 6, ol); _px(12, 5, ol);
+        }
+
         // ============ PIXEL HEART ============
         function drawPixelHeart(c, cx, cy, size, color) {
             const heart = [
@@ -478,6 +543,14 @@
 
             drawCharAt(charCtx, youX, youY, youChar);
             drawCharAt(charCtx, dateX, dateY, dateChar);
+
+            // Draw cat between characters if user created one
+            if (catChar) {
+                const catBaseX = Math.round((baseYouX + 24 + baseDateX) / 2) - 5;
+                const catBaseY = 62;
+                const catBob = Math.sin(frame * 0.1) * 1;
+                drawCatAt(charCtx, catBaseX, catBaseY + Math.round(catBob), catChar);
+            }
 
             // Big heart between them — bobs gently
             const heartCX = ((baseYouX + 24) + baseDateX) / 2 * P + P / 2;

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Your Cat 🐱</title>
+    <script src="shared.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #a8d8ff;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-y: auto;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .page-title {
+            color: #4a90e2;
+            font-size: 2.2em;
+            text-shadow: 4px 4px 0px rgba(255, 105, 180, 0.3);
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .panel {
+            text-align: center;
+            padding: 30px;
+            background: #fff;
+            border: 8px solid #4a90e2;
+            box-shadow:
+                0 0 0 4px #fff,
+                0 0 0 12px #ff69b4,
+                8px 8px 0 12px rgba(0,0,0,0.3);
+            width: 100%;
+            position: relative;
+        }
+
+        .panel-heart {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 40px;
+        }
+
+        .panel h2 {
+            color: #4a90e2;
+            font-size: 1.5em;
+            margin: 15px 0 15px;
+            text-shadow: 3px 3px 0px rgba(255, 105, 180, 0.3);
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        canvas {
+            border: 4px solid #4a90e2;
+            background: #f0f8ff;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .customization-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .option-group {
+            border: 3px solid #4a90e2;
+            padding: 10px;
+            background: #f0f8ff;
+        }
+
+        .option-group label {
+            display: block;
+            color: #4a90e2;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #000;
+            cursor: pointer;
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .color-swatch:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .color-swatch.selected {
+            border-color: #ff69b4;
+            outline: 3px solid #ff69b4;
+            outline-offset: 1px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .nav-btn {
+            padding: 15px 40px;
+            font-size: 1.3em;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            transition: transform 0.1s;
+            box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: white;
+        }
+
+        .nav-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-btn.next { background: #4a90e2; }
+        .nav-btn.skip { background: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <h1 class="page-title">Got a Cat? 🐱</h1>
+
+        <div class="panel">
+            <div class="panel-heart">🐾</div>
+            <h2>Your Cat</h2>
+            <div class="character-preview">
+                <canvas id="catCanvas" width="200" height="200"></canvas>
+            </div>
+            <div class="customization-panel">
+                <div class="option-group">
+                    <label>Fur Color</label>
+                    <div class="color-options" id="furColors">
+                        <div class="color-swatch selected" data-color="#F5A623" style="background:#F5A623"></div>
+                        <div class="color-swatch" data-color="#D4A76A" style="background:#D4A76A"></div>
+                        <div class="color-swatch" data-color="#1A1A1A" style="background:#1A1A1A"></div>
+                        <div class="color-swatch" data-color="#F0F0F0" style="background:#F0F0F0"></div>
+                        <div class="color-swatch" data-color="#888888" style="background:#888888"></div>
+                        <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                        <div class="color-swatch" data-color="#C4956A" style="background:#C4956A"></div>
+                        <div class="color-swatch" data-color="#FF69B4" style="background:#FF69B4"></div>
+                    </div>
+                </div>
+                <div class="option-group">
+                    <label>Eye Color</label>
+                    <div class="color-options" id="eyeColors">
+                        <div class="color-swatch selected" data-color="#32CD32" style="background:#32CD32"></div>
+                        <div class="color-swatch" data-color="#4a90e2" style="background:#4a90e2"></div>
+                        <div class="color-swatch" data-color="#DAA520" style="background:#DAA520"></div>
+                        <div class="color-swatch" data-color="#8B4513" style="background:#8B4513"></div>
+                        <div class="color-swatch" data-color="#40E0D0" style="background:#40E0D0"></div>
+                        <div class="color-swatch" data-color="#5BA8A0" style="background:#5BA8A0"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="nav-btn skip" id="skipBtn">Skip</button>
+            <button class="nav-btn next" id="nextBtn">Next 💖</button>
+        </div>
+    </div>
+
+    <script>
+        const P = 8;
+
+        const catData = { furColor: '#F5A623', eyeColor: '#32CD32' };
+
+        const canvas = document.getElementById('catCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function px(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * P, y * P, P, P);
+        }
+        function rect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * P, y * P, w * P, h * P);
+        }
+        function darken(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.max(0, r - amt); g = Math.max(0, g - amt); b = Math.max(0, b - amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+        function lighten(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+
+        function drawCat() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const fur = catData.furColor;
+            const eyes = catData.eyeColor;
+            const ol = '#1A1A1A';
+            const furDark = darken(fur, 35);
+            const furLight = lighten(fur, 30);
+            const nose = '#FFB6C1';
+
+            // Ears (triangles via pixels)
+            px(5, 3, ol); px(6, 3, ol);
+            px(4, 4, ol); px(5, 4, fur); px(6, 4, fur); px(7, 4, ol);
+            px(3, 5, ol); px(4, 5, fur); px(5, 5, lighten(fur, 50)); px(6, 5, fur); px(7, 5, fur); px(8, 5, ol);
+
+            px(17, 3, ol); px(18, 3, ol);
+            px(16, 4, ol); px(17, 4, fur); px(18, 4, fur); px(19, 4, ol);
+            px(15, 5, ol); px(16, 5, fur); px(17, 5, fur); px(18, 5, lighten(fur, 50)); px(19, 5, fur); px(20, 5, ol);
+
+            // Head
+            rect(5, 6, 14, 10, fur);
+            // Head outline
+            rect(5, 6, 14, 1, ol);
+            rect(4, 7, 1, 8, ol);
+            rect(19, 7, 1, 8, ol);
+            rect(5, 15, 14, 1, ol);
+            px(4, 6, ol); px(19, 6, ol);
+
+            // Cheek fluff
+            rect(4, 10, 1, 4, fur);
+            rect(19, 10, 1, 4, fur);
+            px(3, 11, fur); px(3, 12, fur);
+            px(20, 11, fur); px(20, 12, fur);
+            // Outline cheek fluff
+            px(3, 10, ol); px(3, 13, ol);
+            px(2, 11, ol); px(2, 12, ol);
+            px(20, 10, ol); px(20, 13, ol);
+            px(21, 11, ol); px(21, 12, ol);
+
+            // Forehead shading
+            rect(7, 7, 3, 1, furDark);
+            rect(14, 7, 3, 1, furDark);
+            px(11, 7, furLight); px(12, 7, furLight);
+
+            // Eyes
+            rect(7, 9, 3, 3, '#FFFFFF');
+            rect(14, 9, 3, 3, '#FFFFFF');
+            rect(8, 9, 2, 3, eyes);
+            rect(15, 9, 2, 3, eyes);
+            // Pupils
+            px(8, 10, darken(eyes, 40));
+            px(15, 10, darken(eyes, 40));
+            // Shine
+            px(9, 9, '#FFFFFF');
+            px(16, 9, '#FFFFFF');
+
+            // Nose
+            px(11, 12, nose);
+            px(12, 12, nose);
+
+            // Mouth
+            px(10, 13, ol);
+            px(11, 13, ol);
+            px(12, 13, ol);
+            px(13, 13, ol);
+
+            // Whiskers
+            rect(1, 11, 3, 1, ol);
+            rect(1, 13, 3, 1, ol);
+            rect(20, 11, 3, 1, ol);
+            rect(20, 13, 3, 1, ol);
+
+            // Body
+            rect(6, 16, 12, 6, fur);
+            rect(5, 16, 1, 6, ol);
+            rect(18, 16, 1, 6, ol);
+            // Belly lighter
+            rect(9, 17, 6, 4, furLight);
+            // Body shading
+            px(6, 20, furDark); px(17, 20, furDark);
+
+            // Front legs
+            rect(6, 22, 3, 3, fur);
+            rect(15, 22, 3, 3, fur);
+            // Outline legs
+            rect(5, 22, 1, 3, ol);
+            rect(9, 22, 1, 3, ol);
+            rect(14, 22, 1, 3, ol);
+            rect(18, 22, 1, 3, ol);
+            // Paws
+            rect(6, 24, 3, 1, furLight);
+            rect(15, 24, 3, 1, furLight);
+            rect(5, 25, 5, 1, ol);
+            rect(14, 25, 5, 1, ol);
+
+            // Tail (curving to the right)
+            rect(18, 18, 2, 1, fur);
+            rect(19, 17, 2, 1, fur);
+            rect(20, 16, 2, 1, fur);
+            rect(21, 15, 2, 1, fur);
+            px(22, 14, fur);
+            // Tail outline
+            px(18, 17, ol); px(19, 16, ol); px(20, 15, ol); px(21, 14, ol); px(22, 13, ol);
+            px(20, 18, ol); px(21, 17, ol); px(22, 16, ol); px(23, 15, ol); px(23, 14, ol);
+        }
+
+        // Wire up swatches
+        function wireSwatches(containerId, prop) {
+            const container = document.getElementById(containerId);
+            const swatches = container.querySelectorAll('.color-swatch');
+            swatches.forEach(s => s.addEventListener('click', () => {
+                swatches.forEach(sw => sw.classList.remove('selected'));
+                s.classList.add('selected');
+                catData[prop] = s.dataset.color;
+                drawCat();
+            }));
+        }
+
+        wireSwatches('furColors', 'furColor');
+        wireSwatches('eyeColors', 'eyeColor');
+
+        // Load saved
+        const saved = localStorage.getItem('valentineCat');
+        if (saved) {
+            Object.assign(catData, JSON.parse(saved));
+            document.querySelectorAll('#furColors .color-swatch').forEach(s => {
+                s.classList.toggle('selected', s.dataset.color === catData.furColor);
+            });
+            document.querySelectorAll('#eyeColors .color-swatch').forEach(s => {
+                s.classList.toggle('selected', s.dataset.color === catData.eyeColor);
+            });
+        }
+
+        drawCat();
+
+        // Next — save cat and go to date settings
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            localStorage.setItem('valentineCat', JSON.stringify(catData));
+            window.location.href = 'date-settings.html';
+        });
+
+        // Skip — remove cat data and go to date settings
+        document.getElementById('skipBtn').addEventListener('click', () => {
+            localStorage.removeItem('valentineCat');
+            window.location.href = 'date-settings.html';
+        });
+    </script>
+</body>
+</html>
