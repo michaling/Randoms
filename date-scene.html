@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Date 💕</title>
+    <title>Our Date 💕</title>
     <style>
         * {
             margin: 0;
@@ -77,6 +77,7 @@
 
         .char-canvas {
             z-index: 2;
+            cursor: pointer;
         }
 
         .floating-heart {
@@ -86,11 +87,16 @@
             pointer-events: none;
             z-index: 10;
         }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-300px) scale(0.5); }
+        }
     </style>
 </head>
 <body>
     <div class="page-wrapper">
-        <h1 class="page-title">Your Date 💕</h1>
+        <h1 class="page-title">Our Date 💕</h1>
         <div class="scene-frame">
             <div class="scene-layers">
                 <canvas id="bgCanvas" class="bg-canvas" width="640" height="400"></canvas>
@@ -390,31 +396,179 @@
             };
         }
 
-        // ============ DRAW CHARACTERS + HEARTS ============
+        // ============ DRAW CHARACTERS + HEARTS (ANIMATED) ============
+        let frame = 0;
+
+        // Track current character positions for click detection
+        let currentYouX = 28, currentYouY = 36;
+        let currentDateX = 76, currentDateY = 36;
+
+        // Speech bubble constants
+        const MSG_LOVE = 'i love u';
+        const MSG_LOVE_TOO = 'i love u too';
+        const MSG_WELL = 'answer u bitch';
+        const COLOR_MALE = '#4a90e2';
+        const COLOR_FEMALE = '#ff69b4';
+        const CHAR_WIDTH = 24;
+        const CHAR_HEIGHT = 40;
+
+        // Speech bubble state
+        let bubble = null; // { x, y, startTime, text, color }
+        let youSaidLove = false;   // "you" character has said "i love u" (persists)
+        let dateSaidLove = false;  // "date" character has said "i love u" (persists)
+
+        function drawSpeechBubble(c, bpx, bpy, text, color) {
+            const bw = 140, bh = 36;
+            const bx = bpx - bw / 2;
+            const by = bpy - bh - 8;
+
+            // Bubble background
+            c.fillStyle = '#fff';
+            c.strokeStyle = color;
+            c.lineWidth = 3;
+            c.beginPath();
+            c.roundRect(bx, by, bw, bh, 8);
+            c.fill();
+            c.stroke();
+
+            // Little triangle pointer
+            c.fillStyle = '#fff';
+            c.strokeStyle = color;
+            c.beginPath();
+            c.moveTo(bpx - 8, by + bh);
+            c.lineTo(bpx, by + bh + 10);
+            c.lineTo(bpx + 8, by + bh);
+            c.closePath();
+            c.fill();
+            c.stroke();
+            // Cover the border line inside bubble
+            c.fillStyle = '#fff';
+            c.fillRect(bpx - 7, by + bh - 2, 14, 3);
+
+            // Text
+            c.fillStyle = color;
+            c.font = 'bold 14px "Courier New", monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(text, bx + bw / 2, by + bh / 2);
+        }
+
         function drawCharacters() {
             charCtx.clearRect(0, 0, W, H);
 
-            // Grid is W/P = 128 wide, H/P = 80 tall
-            // Character is ~24 wide, ~40 tall in grid units
-            // Center both characters: total width = 24 + gap + 24
-            // gap of ~16 grid units for the heart
-            // total = 24+16+24 = 64, offset from left = (128-64)/2 = 32
-            const youX = 28;
-            const dateX = 76;
-            const charY = 36; // top of hair; feet at 36+39=75, pixel 375
+            const baseYouX = 28;
+            const baseDateX = 76;
+            const baseY = 36;
 
-            drawCharAt(charCtx, youX, charY, youChar);
-            drawCharAt(charCtx, dateX, charY, dateChar);
+            const youBounce = Math.abs(Math.sin(frame * 0.08)) * -3;
+            const youSway = Math.sin(frame * 0.06) * 1.5;
+            const dateBounce = Math.abs(Math.sin(frame * 0.08 + 1.5)) * -3;
+            const dateSway = Math.sin(frame * 0.06 + 1.5) * 1.5;
 
-            // Big heart between them
-            const heartCX = ((youX + 24) + dateX) / 2 * P + P/2;
-            const heartCY = (charY + 18) * P;
-            drawPixelHeart(charCtx, heartCX, heartCY, 5, '#ff69b4');
+            const youX = baseYouX + Math.round(youSway);
+            const youY = baseY + Math.round(youBounce);
+            const dateX = baseDateX + Math.round(dateSway);
+            const dateY = baseY + Math.round(dateBounce);
 
-            // Smaller floating hearts above
-            drawPixelHeart(charCtx, heartCX - 35, heartCY - 40, 3, '#ff99cc');
-            drawPixelHeart(charCtx, heartCX + 40, heartCY - 35, 3, '#ff99cc');
+            // Store for click detection
+            currentYouX = youX;
+            currentYouY = youY;
+            currentDateX = dateX;
+            currentDateY = dateY;
+
+            drawCharAt(charCtx, youX, youY, youChar);
+            drawCharAt(charCtx, dateX, dateY, dateChar);
+
+            // Big heart between them — bobs gently
+            const heartCX = ((baseYouX + 24) + baseDateX) / 2 * P + P / 2;
+            const heartBaseY = (baseY + 18) * P;
+            const heartBob = Math.sin(frame * 0.05) * 6;
+            drawPixelHeart(charCtx, heartCX, heartBaseY + heartBob, 5, '#ff69b4');
+
+            // Smaller hearts — float around
+            const sm1Bob = Math.sin(frame * 0.07 + 1) * 8;
+            const sm2Bob = Math.sin(frame * 0.07 + 3) * 8;
+            drawPixelHeart(charCtx, heartCX - 35, heartBaseY - 40 + sm1Bob, 3, '#ff99cc');
+            drawPixelHeart(charCtx, heartCX + 40, heartBaseY - 35 + sm2Bob, 3, '#ff99cc');
+
+            // Draw speech bubble if active
+            if (bubble) {
+                const bubbleElapsed = Date.now() - bubble.startTime;
+                if (bubbleElapsed < 2000) {
+                    charCtx.globalAlpha = bubbleElapsed > 1500 ? 1 - (bubbleElapsed - 1500) / 500 : 1;
+                    drawSpeechBubble(charCtx, bubble.x, bubble.y, bubble.text, bubble.color);
+                    charCtx.globalAlpha = 1;
+                } else {
+                    bubble = null;
+                }
+            }
+
+            frame++;
+            requestAnimationFrame(drawCharacters);
         }
+
+        // ============ CLICK TO SPEAK ============
+        function getBubbleColor(ch) {
+            return ch.bodyType === 'male' ? COLOR_MALE : COLOR_FEMALE;
+        }
+
+        function handleCharClick(who, charObj, gridX, gridY) {
+            const iAmYou = who === 'you';
+            const otherSaidLove = iAmYou ? dateSaidLove : youSaidLove;
+            let text;
+
+            if (otherSaidLove) {
+                // The other character already said "i love u" at some point
+                text = MSG_LOVE_TOO;
+                youSaidLove = false;
+                dateSaidLove = false;
+            } else if ((iAmYou && youSaidLove) || (!iAmYou && dateSaidLove)) {
+                // Clicking same character that already said love
+                text = MSG_WELL;
+            } else {
+                text = MSG_LOVE;
+                if (iAmYou) { youSaidLove = true; } else { dateSaidLove = true; }
+            }
+
+            bubble = {
+                x: (gridX + CHAR_WIDTH / 2) * P,
+                y: gridY * P,
+                startTime: Date.now(),
+                text,
+                color: getBubbleColor(charObj)
+            };
+        }
+
+        function getMouseCanvas(e) {
+            const canvasRect = charCanvas.getBoundingClientRect();
+            return {
+                mx: (e.clientX - canvasRect.left) * (W / canvasRect.width),
+                my: (e.clientY - canvasRect.top) * (H / canvasRect.height)
+            };
+        }
+
+        function isOverChar(mx, my, gx, gy) {
+            return mx >= gx * P && mx <= (gx + CHAR_WIDTH) * P &&
+                   my >= gy * P && my <= (gy + CHAR_HEIGHT) * P;
+        }
+
+        charCanvas.addEventListener('click', (e) => {
+            const { mx, my } = getMouseCanvas(e);
+
+            if (isOverChar(mx, my, currentYouX, currentYouY)) {
+                handleCharClick('you', youChar, currentYouX, currentYouY);
+            } else if (isOverChar(mx, my, currentDateX, currentDateY)) {
+                handleCharClick('date', dateChar, currentDateX, currentDateY);
+            }
+        });
+
+        // Change cursor when hovering over characters
+        charCanvas.addEventListener('mousemove', (e) => {
+            const { mx, my } = getMouseCanvas(e);
+            const over = isOverChar(mx, my, currentYouX, currentYouY) ||
+                         isOverChar(mx, my, currentDateX, currentDateY);
+            charCanvas.style.cursor = over ? 'pointer' : 'default';
+        });
 
         // ============ GO ============
         drawBackground();
