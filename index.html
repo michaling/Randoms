@@ -66,6 +66,15 @@
             text-shadow: 2px 2px 0px rgba(74, 144, 226, 0.2);
         }
 
+        .snarky-comment {
+            font-size: 1.2em;
+            color: #4a90e2;
+            margin-top: 20px;
+            font-weight: bold;
+            min-height: 30px;
+            text-shadow: 2px 2px 0px rgba(255, 105, 180, 0.2);
+        }
+
         .button-container {
             display: flex;
             gap: 20px;
@@ -171,6 +180,7 @@
         <div id="question-section">
             <h1>Hey You! 🥰</h1>
             <p class="question">Will you be my Valentine?</p>
+            <p class="snarky-comment" id="snarkyComment"></p>
             
             <div class="button-container" id="buttonContainer">
                 <button id="yesBtn">Yes! 💖</button>
@@ -179,12 +189,11 @@
         </div>
 
         <div class="celebration" id="celebration">
-            <h2>Yay! 🎉💕</h2>
             <div class="gif-container">
                 <img src="https://mir-s3-cdn-cf.behance.net/project_modules/fs/9fe826107812099.5faf8831d90b0.gif" alt="Happy pixel art celebration">
             </div>
             <p style="font-size: 1.5em; color: #4a90e2; margin-top: 20px; text-shadow: 2px 2px 0px rgba(255, 105, 180, 0.3);">
-                You made my day! 💗✨
+                When you’re a kid, you assume your parents are soulmates. My kids are gonna be right about that ♥
             </p>
         </div>
     </div>
@@ -195,11 +204,54 @@
         const questionSection = document.getElementById('question-section');
         const celebration = document.getElementById('celebration');
         const buttonContainer = document.getElementById('buttonContainer');
+        const snarkyComment = document.getElementById('snarkyComment');
+
+        const snarkyComments = [
+            // Arrested Development
+            "You've made a huge mistake",
+            // Arrested Development
+            "NO TOUCHING!",
+            // It's Always Sunny in Philadelphia
+            "Think of the implications",
+            // The Office
+            "Fool me once, strike one. Fool me twice... strike three",
+            // The Office
+            "Why are you the way that you are?",
+            // The Office (adapted)
+            "You can't just say 'no' and expect anything to happen",
+            // Arrested Development (adapted)
+            "This is what we in the biz call a bad idea",
+            // Brooklyn Nine-Nine
+            "Cool cool cool cool cool no doubt no doubt",
+            // Arrested Development
+            "OH COME ON!",
+            // New Girl
+            "I'm not convinced you know how to read",
+            // Gilmore Girls
+            "Oy with the poodles already",
+            // The office
+            "That could have gone one in two ways, but I never expected you to click No",
+            // New Girl
+            "Shall I compare thee to a summer's day? No, a summer's day is not a bitch"
+        ];
+
+        let commentIndex = 0;
 
         // Make the No button run away
         noBtn.addEventListener('mouseover', () => {
             const container = buttonContainer.getBoundingClientRect();
             const button = noBtn.getBoundingClientRect();
+            
+            // Show snarky comment
+            snarkyComment.textContent = snarkyComments[commentIndex];
+            commentIndex = (commentIndex + 1);
+            
+            // Check if we've shown all comments
+            if (commentIndex >= snarkyComments.length) {
+                // We've cycled through all comments, hide the No button
+                noBtn.style.display = 'none';
+                return;
+            }
             
             // Get random position within a safe range
             const maxX = window.innerWidth - button.width - 100;
