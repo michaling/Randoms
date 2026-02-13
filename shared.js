@@ -1,8 +1,20 @@
 const link = document.createElement('link');
 link.rel = 'icon';
 link.type = 'image/png';
-link.href = 'favicon/heart.png';
+link.href = 'icons/heart.png';
 document.head.appendChild(link);
+
+// ============ CUSTOM CURSOR ============
+(function () {
+    const current = location.pathname.split('/').pop() || 'index.html';
+    const style = document.createElement('style');
+    if (current === 'cat.html') {
+        style.textContent = `* { cursor: url('https://cdn.cursors-4u.net/css-previews/animated-nyan-cat-sparkly-f903ac5f-css.webp') 3 0, auto !important; }`;
+    } else {
+        style.textContent = `* { cursor: url('https://cdn.cursors-4u.net/css-previews/cool-pink-pointer-glitter-676b95b5-css.webp') 0 0, auto !important; }`
+    }
+    document.head.appendChild(style);
+})();
 
 // ============ NAVIGATION BUTTONS ============
 (function () {

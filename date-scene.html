@@ -484,6 +484,13 @@
         let youSaidLove = false;   // "you" character has said "i love u" (persists)
         let dateSaidLove = false;  // "date" character has said "i love u" (persists)
 
+        // Cat click state
+        let catClickIndex = 0;
+        const catMessages = ['meow', 'hiss', '...'];
+
+        let currentCatX = 0, currentCatY = 0;
+        const CAT_WIDTH = 14, CAT_HEIGHT = 15;
+
         function drawSpeechBubble(c, bpx, bpy, text, color) {
             const bw = 140, bh = 36;
             const bx = bpx - bw / 2;
@@ -551,7 +558,10 @@
                 const catBaseX = Math.round((baseYouX + 24 + baseDateX) / 2) - 5;
                 const catBaseY = 62;
                 const catBob = Math.sin(frame * 0.1) * 1;
-                drawCatAt(charCtx, catBaseX, catBaseY + Math.round(catBob), catChar);
+                const catDrawY = catBaseY + Math.round(catBob);
+                drawCatAt(charCtx, catBaseX, catDrawY, catChar);
+                currentCatX = catBaseX;
+                currentCatY = catDrawY;
             }
 
             // Big heart between them — bobs gently
@@ -627,10 +637,33 @@
                    my >= gy * P && my <= (gy + CHAR_HEIGHT) * P;
         }
 
+        function isOverCat(mx, my, gx, gy) {
+            return mx >= gx * P && mx <= (gx + CAT_WIDTH) * P &&
+                   my >= gy * P && my <= (gy + CAT_HEIGHT) * P;
+        }
+
+        function handleCatClick() {
+            const text = catMessages[catClickIndex];
+            catClickIndex++;
+            if (catClickIndex >= catMessages.length) {
+                catClickIndex = 0;
+            }
+
+            bubble = {
+                x: (currentCatX + CAT_WIDTH / 2) * P,
+                y: currentCatY * P,
+                startTime: Date.now(),
+                text,
+                color: '#9dcf9f'
+            };
+        }
+
         charCanvas.addEventListener('click', (e) => {
             const { mx, my } = getMouseCanvas(e);
 
-            if (isOverChar(mx, my, currentYouX, currentYouY)) {
+            if (catChar && isOverCat(mx, my, currentCatX, currentCatY)) {
+                handleCatClick();
+            } else if (isOverChar(mx, my, currentYouX, currentYouY)) {
                 handleCharClick('you', youChar, currentYouX, currentYouY);
             } else if (isOverChar(mx, my, currentDateX, currentDateY)) {
                 handleCharClick('date', dateChar, currentDateX, currentDateY);
@@ -641,7 +674,8 @@
         charCanvas.addEventListener('mousemove', (e) => {
             const { mx, my } = getMouseCanvas(e);
             const over = isOverChar(mx, my, currentYouX, currentYouY) ||
-                         isOverChar(mx, my, currentDateX, currentDateY);
+                         isOverChar(mx, my, currentDateX, currentDateY) ||
+                         (catChar && isOverCat(mx, my, currentCatX, currentCatY));
             charCanvas.style.cursor = over ? 'pointer' : 'default';
         });
 

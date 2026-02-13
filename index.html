@@ -174,12 +174,97 @@
         ];
 
         let commentIndex = 0;
+        let lastBtnCenterX = null;
+        let lastBtnCenterY = null;
+        const MIN_MOVE_DIST = 300;
+
+        function getContainerRect() {
+            const container = document.querySelector('.container');
+            const rect = container.getBoundingClientRect();
+            return {
+                left: rect.left - 10,
+                top: rect.top - 10,
+                right: rect.right + 10,
+                bottom: rect.bottom + 10
+            };
+        }
+
+        function rectsOverlap(x, y, w, h, r) {
+            return !(x + w < r.left || x > r.right || y + h < r.top || y > r.bottom);
+        }
+
+        function getRandomNoPosition(btnWidth, btnHeight) {
+            const padding = 20;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const textRect = getContainerRect();
+
+            // Build a grid of candidate positions across the whole viewport
+            const cols = 6;
+            const rows = 5;
+            const cellW = (vw - padding * 2) / cols;
+            const cellH = (vh - padding * 2) / rows;
+            const candidates = [];
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // Random position within this cell, ensuring button fits
+                    const cellLeft = padding + col * cellW;
+                    const cellTop = padding + row * cellH;
+                    const maxX = Math.min(cellLeft + cellW - btnWidth, vw - btnWidth - padding);
+                    const maxY = Math.min(cellTop + cellH - btnHeight, vh - btnHeight - padding);
+                    const minX = Math.max(cellLeft, padding);
+                    const minY = Math.max(cellTop, padding);
+
+                    if (maxX < minX || maxY < minY) continue;
+
+                    const x = minX + Math.random() * (maxX - minX);
+                    const y = minY + Math.random() * (maxY - minY);
+
+                    // Skip if overlapping the container
+                    if (rectsOverlap(x, y, btnWidth, btnHeight, textRect)) continue;
+
+                    const cx = x + btnWidth / 2;
+                    const cy = y + btnHeight / 2;
+
+                    candidates.push({ x, y, cx, cy });
+                }
+            }
+
+            if (candidates.length === 0) {
+                return { x: padding, y: padding };
+            }
+
+            // Filter to only candidates far enough from the last position
+            if (lastBtnCenterX !== null) {
+                const far = candidates.filter(c => {
+                    const dist = Math.sqrt((c.cx - lastBtnCenterX) ** 2 + (c.cy - lastBtnCenterY) ** 2);
+                    return dist >= MIN_MOVE_DIST;
+                });
+                if (far.length > 0) {
+                    const pick = far[Math.floor(Math.random() * far.length)];
+                    lastBtnCenterX = pick.cx;
+                    lastBtnCenterY = pick.cy;
+                    return { x: pick.x, y: pick.y };
+                }
+            }
+
+            // Fallback: pick the candidate farthest from last position (or random if first move)
+            if (lastBtnCenterX !== null) {
+                candidates.sort((a, b) => {
+                    const da = Math.sqrt((a.cx - lastBtnCenterX) ** 2 + (a.cy - lastBtnCenterY) ** 2);
+                    const db = Math.sqrt((b.cx - lastBtnCenterX) ** 2 + (b.cy - lastBtnCenterY) ** 2);
+                    return db - da;
+                });
+            }
+            const pick = candidates[0];
+            lastBtnCenterX = pick.cx;
+            lastBtnCenterY = pick.cy;
+            return { x: pick.x, y: pick.y };
+        }
 
         // Make the No button run away
-        noBtn.addEventListener('mouseover', () => {
-            const container = buttonContainer.getBoundingClientRect();
-            const button = noBtn.getBoundingClientRect();
-            
+        noBtn.addEventListener('mouseenter', () => {
             // Show snarky comment
             snarkyComment.textContent = snarkyComments[commentIndex];
             commentIndex = (commentIndex + 1);
@@ -195,16 +280,12 @@
                 return;
             }
             
-            // Get random position within a safe range
-            const maxX = window.innerWidth - button.width - 100;
-            const maxY = window.innerHeight - button.height - 100;
-            
-            const randomX = Math.random() * (maxX - 100) + 50;
-            const randomY = Math.random() * (maxY - 100) + 50;
-            
+            const btnRect = noBtn.getBoundingClientRect();
+            const pos = getRandomNoPosition(btnRect.width, btnRect.height);
+
             noBtn.style.position = 'fixed';
-            noBtn.style.left = randomX + 'px';
-            noBtn.style.top = randomY + 'px';
+            noBtn.style.left = pos.x + 'px';
+            noBtn.style.top = pos.y + 'px';
         });
 
         // Handle Yes button click
