@@ -18,7 +18,7 @@ document.head.appendChild(link);
 
 // ============ NAVIGATION BUTTONS ============
 (function () {
-    const pages = ['index.html', 'celebration.html', 'character.html', 'cat.html', 'date-settings.html', 'date-scene.html', 'game.html'];
+    const pages = ['index.html', 'celebration.html', 'character.html', 'cat.html', 'date-settings.html', 'date-scene.html', 'game.html', 'maze.html'];
     const current = location.pathname.split('/').pop() || 'index.html';
     const idx = pages.indexOf(current);
 
@@ -92,3 +92,23 @@ document.head.appendChild(link);
         document.body.appendChild(nav);
     });
 })();
+
+// ============ GAME SCORES ============
+// Each level saves its score to localStorage under 'valentineScore_level1', 'valentineScore_level2', etc.
+// This function returns the total combined score across all levels.
+function getValentineTotalScore() {
+    let total = 0;
+    for (let level = 1; level <= 10; level++) {
+        const val = localStorage.getItem('valentineScore_level' + level);
+        if (val !== null) total += parseInt(val, 10) || 0;
+    }
+    return total;
+}
+
+function getValentineLevelScore(level) {
+    return parseInt(localStorage.getItem('valentineScore_level' + level), 10) || 0;
+}
+
+function setValentineLevelScore(level, score) {
+    localStorage.setItem('valentineScore_level' + level, score);
+}
