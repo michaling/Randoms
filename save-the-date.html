@@ -1450,8 +1450,8 @@
             const currentSpeed = PLAYER_SPEED * speedMultiplier;
 
             // Check if date is visible but not yet reached (stop world scrolling)
-            // Date only becomes visible when within W pixels of ACTUAL required distance
-            const dateVisible = distance >= TOTAL_DISTANCE - W;
+            // Date only becomes visible when within W pixels of ACTUAL required distance AND killed enough dragons (bar is full)
+            const dateVisible = distance >= TOTAL_DISTANCE - W && dragonsKilled >= MIN_DRAGONS_REQUIRED;
             // Date is only reached when player has traveled FULL distance AND killed enough dragons AND walked to end
             const dateReached = distance >= TOTAL_DISTANCE && dragonsKilled >= MIN_DRAGONS_REQUIRED && player.x >= W - 250;
 
@@ -1542,12 +1542,12 @@
                 nextObstacleIn = (150 + Math.random() * 100) / stoneDifficulty;
             }
 
-            // Update falling stones
+            // Update falling stones - skip collision during dancing
             obstacles = obstacles.filter(obs => {
                 obs.y += obs.vy;
 
-                // Check collision with player
-                if (player.invincible <= 0 &&
+                // Check collision with player - skip during dancing
+                if (gameState !== 'dancing' && player.invincible <= 0 &&
                     player.x < obs.x + obs.width && player.x + player.width > obs.x &&
                     player.y < obs.y + obs.height && player.y + player.height > obs.y) {
                     health -= 15;
@@ -1595,44 +1595,46 @@
                 }
                 if (d.fireTimer > 0) d.fireTimer--;
 
-                // Check collision with player (only bottom feet area)
-                const dragonFeetBox = {
-                    x: d.x + 10,
-                    y: d.y + 45,
-                    width: d.width - 20,
-                    height: 30
-                };
-                if (player.invincible <= 0 &&
-                    player.x < dragonFeetBox.x + dragonFeetBox.width && player.x + player.width > dragonFeetBox.x &&
-                    player.y < dragonFeetBox.y + dragonFeetBox.height && player.y + player.height > dragonFeetBox.y) {
-                    health -= 25;
-                    player.invincible = 60;
-                    playHurtSound();
-                    for (let j = 0; j < 5; j++) {
-                        particles.push({
-                            x: player.x + player.width / 2,
-                            y: player.y + player.height / 2,
-                            vx: (Math.random() - 0.5) * 4,
-                            vy: (Math.random() - 0.5) * 4,
-                            life: 12,
-                            color: '#228b22'
-                        });
-                    }
-                    if (health <= 0) {
-                        gameState = 'gameover';
-                        bgMusic.pause();
-                        document.getElementById('failScore').textContent = 'Score: ' + score;
-                        document.getElementById('gameOverOverlay').classList.remove('hidden');
+                // Check collision with player (only bottom feet area) - skip during dancing
+                if (gameState !== 'dancing') {
+                    const dragonFeetBox = {
+                        x: d.x + 10,
+                        y: d.y + 45,
+                        width: d.width - 20,
+                        height: 30
+                    };
+                    if (player.invincible <= 0 &&
+                        player.x < dragonFeetBox.x + dragonFeetBox.width && player.x + player.width > dragonFeetBox.x &&
+                        player.y < dragonFeetBox.y + dragonFeetBox.height && player.y + player.height > dragonFeetBox.y) {
+                        health -= 25;
+                        player.invincible = 60;
+                        playHurtSound();
+                        for (let j = 0; j < 5; j++) {
+                            particles.push({
+                                x: player.x + player.width / 2,
+                                y: player.y + player.height / 2,
+                                vx: (Math.random() - 0.5) * 4,
+                                vy: (Math.random() - 0.5) * 4,
+                                life: 12,
+                                color: '#228b22'
+                            });
+                        }
+                        if (health <= 0) {
+                            gameState = 'gameover';
+                            bgMusic.pause();
+                            document.getElementById('failScore').textContent = 'Score: ' + score;
+                            document.getElementById('gameOverOverlay').classList.remove('hidden');
+                        }
                     }
                 }
 
-                // Check collision with projectiles - use generous hitbox for easier shooting
-                // Main body area: center ellipse is at x+50, y+35 with 28x22 radius
+                // Check collision with projectiles - use generous hitbox covering entire dragon
+                // Hitbox covers: head (extends left), body, wings, and tail (extends right)
                 const dragonBodyBox = {
-                    x: d.x + 10,
-                    y: d.y + 5,
-                    width: d.width - 20,
-                    height: d.height - 15
+                    x: d.x - 15,
+                    y: d.y - 10,
+                    width: d.width + 50,
+                    height: d.height + 10
                 };
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     const p = projectiles[i];
@@ -1675,13 +1677,13 @@
                 return d.x > -100;
             });
 
-            // Update fireballs
+            // Update fireballs - skip collision during dancing
             fireballs = fireballs.filter(f => {
                 f.x += f.vx;
                 f.y += f.vy;
 
-                // Check collision with player
-                if (player.invincible <= 0 &&
+                // Check collision with player - skip during dancing
+                if (gameState !== 'dancing' && player.invincible <= 0 &&
                     f.x > player.x && f.x < player.x + player.width &&
                     f.y > player.y && f.y < player.y + player.height) {
                     health -= 20;
@@ -1810,8 +1812,8 @@
                 // Draw particles
                 drawParticles();
             } else {
-                // Draw date at the end if close enough
-                if (distance > TOTAL_DISTANCE - W) {
+                // Draw date at the end if close enough AND killed enough dragons (bar is full)
+                if (distance > TOTAL_DISTANCE - W && dragonsKilled >= MIN_DRAGONS_REQUIRED) {
                     drawDateAtEnd();
                 }
 
