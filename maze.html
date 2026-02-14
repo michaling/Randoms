@@ -147,7 +147,7 @@
                 <div class="overlay-sub" id="winScore">Score: 0</div>
                 <div class="overlay-sub" id="winStats">Time: 0:00 · Steps: 0 · Collected: 0</div>
                 <div class="overlay-sub" id="winTotal">Total Score: 0</div>
-                <button class="overlay-btn" id="replayBtn">Play Again</button>
+                <button class="overlay-btn" id="nextLevelBtn">Next Level</button>
             </div>
         </div>
         <br>
@@ -753,7 +753,9 @@
     }
 
     document.getElementById('startBtn').addEventListener('click', startGame);
-    document.getElementById('replayBtn').addEventListener('click', startGame);
+    document.getElementById('nextLevelBtn').addEventListener('click', () => {
+        window.location.href = 'dance.html';
+    });
 
     // Initial render - generate a maze for the background
     generateMaze();

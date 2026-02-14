@@ -18,7 +18,7 @@ document.head.appendChild(link);
 
 // ============ NAVIGATION BUTTONS ============
 (function () {
-    const pages = ['index.html', 'celebration.html', 'character.html', 'cat.html', 'date-settings.html', 'date-scene.html', 'game.html', 'maze.html'];
+    const pages = ['index.html', 'celebration.html', 'character.html', 'cat.html', 'date-settings.html', 'date-scene.html', 'game.html', 'maze.html', 'dance.html'];
     const current = location.pathname.split('/').pop() || 'index.html';
     const idx = pages.indexOf(current);
 

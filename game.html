@@ -131,14 +131,14 @@
     <div class="page-wrapper">
         <div class="hud">
             <span class="hud-item" id="scoreDisplay">Score: 0</span>
-            <span class="hud-item" id="coinDisplay">💖 0 / 10</span>
+            <span class="hud-item" id="coinDisplay">💖 0 / 20 </span>
             <span class="hud-item" id="livesDisplay">❤️❤️❤️</span>
         </div>
         <div class="game-frame">
             <canvas id="gameCanvas" width="800" height="400"></canvas>
             <div class="overlay" id="startOverlay">
                 <div class="overlay-text">Level 1</div>
-                <div class="overlay-sub">Collect 10 hearts & dodge obstacles!</div>
+                <div class="overlay-sub">Collect 20 hearts & dodge obstacles!</div>
                 <button class="overlay-btn" id="startBtn">Start</button>
             </div>
             <div class="overlay hidden" id="gameOverOverlay">
@@ -149,7 +149,7 @@
             <div class="overlay hidden" id="levelCompleteOverlay">
                 <div class="overlay-text">Level Complete!</div>
                 <div class="overlay-sub" id="completeScore">Score: 0</div>
-                <div class="overlay-sub">You collected all the hearts! 💞</div>
+                <div class="overlay-sub">You collected all the hearts!</div>
                 <button class="overlay-btn" id="nextLevelBtn">Next Level</button>
             </div>
         </div>
@@ -433,7 +433,7 @@
     let frame = 0;
     let invincibleUntil = 0;
     let coins = 0;
-    const totalCoins = 10;
+    const totalCoins = 20;
 
     // Group position (all characters move together)
     let groupX = 60;
@@ -879,16 +879,22 @@
             }
         }
 
-        // Coin collection
-        coinItems.forEach((coin, index) => {
-            const dist = Math.hypot(groupX + CHAR_PX_W - coin.x, groupY - coin.y);
-            if (dist < 30) {
+        // Coin collection - iterate backwards to avoid splice index issues
+        const groupCenterX = groupX + CHAR_PX_W + 3; // center of both characters
+        const groupTopY = groupY - CHAR_PX_H;
+        for (let i = coinItems.length - 1; i >= 0; i--) {
+            const coin = coinItems[i];
+            const coinDrawY = coin.y + Math.sin(frame * 0.1 + coin.phase) * 5;
+            const dx = groupCenterX - coin.x;
+            const dy = (groupY + groupTopY) / 2 - coinDrawY; // compare to vertical center of characters
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 55) {
                 coins++;
                 score += 500;
-                spawnCoinParticles(coin.x, coin.y);
-                coinItems.splice(index, 1);
+                spawnCoinParticles(coin.x, coinDrawY);
+                coinItems.splice(i, 1);
             }
-        });
+        }
 
         // HUD
         document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
