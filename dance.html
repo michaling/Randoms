@@ -147,11 +147,11 @@
                 <div class="overlay-sub" id="failScore">Score: 0</div>
                 <button class="overlay-btn" id="retryBtn">Try Again</button>
             </div>
-            <div class="overlay hidden" id="winOverlay">
+<div class="overlay hidden" id="winOverlay">
                 <div class="overlay-text">You smashed it!</div>
                 <div class="overlay-sub" id="winScore">Score: 0</div>
                 <div class="overlay-sub" id="winTotal">Total Score: 0</div>
-                <button class="overlay-btn" id="replayBtn">Play Again</button>
+                <button class="overlay-btn" id="nextLevelBtn">Next Level</button>
             </div>
         </div>
         <br>
@@ -683,8 +683,11 @@ const finalScore = score + maxCombo * 10;
     }
 
     document.getElementById('startBtn').addEventListener('click', startGame);
-    document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('click', startGame);
     document.getElementById('replayBtn').addEventListener('click', startGame);
+    document.getElementById('nextLevelBtn').addEventListener('click', () => {
+        window.location.href = 'save-the-date.html';
+    });
 
     // Initial render
     gameLoop();

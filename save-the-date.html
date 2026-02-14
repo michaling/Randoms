@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 4 </title>
+    <script src="shared.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.05) 2px, rgba(255,255,255,.05) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,.05) 2px, rgba(255,255,255,.05) 4px);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            image-rendering: pixelated;
+        }
+
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 95%;
+            max-width: 1400px;
+        }
+
+        .game-frame {
+            position: relative;
+            border: 8px solid #4a90e2;
+            box-shadow:
+                0 0 0 4px #fff,
+                0 0 0 12px #ff69b4,
+                8px 8px 0 12px rgba(0,0,0,0.3);
+            width: 100%;
+            overflow: hidden;
+            background: #222;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 4px;
+        }
+
+        .hud-item {
+            color: #ff69b4;
+            font-size: 1.4em;
+            font-weight: bold;
+            text-shadow: 2px 2px 0px rgba(74, 144, 226, 0.5);
+            letter-spacing: 1px;
+        }
+
+        .controls-hint {
+            color: #87ceeb;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .overlay.hidden { display: none; }
+
+        .overlay-text {
+            color: #fff;
+            font-size: 3em;
+            font-weight: bold;
+            text-shadow: 4px 4px 0 #ff69b4;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .overlay-sub {
+            color: #87ceeb;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            max-width: 500px;
+            line-height: 1.6;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+        }
+
+        .overlay-story {
+            color: #ffd700;
+            font-size: 1.1em;
+            font-weight: bold;
+            text-align: center;
+            max-width: 550px;
+            line-height: 1.8;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.7);
+            padding: 20px;
+            border: 3px solid #ff69b4;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .overlay-btn {
+            padding: 15px 40px;
+            font-size: 1.3em;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            background: #ff69b4;
+            color: #fff;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: transform 0.1s;
+        }
+
+        .overlay-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 rgba(0,0,0,0.3);
+        }
+
+        .villain-name {
+            color: #ff4444;
+            text-shadow: 3px 3px 0 #000;
+            font-size: 1.3em;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <div class="hud">
+            <span class="hud-item" id="healthDisplay" style="display: flex; align-items: center; gap: 10px;">
+                <span style="color: #ff4444;">HP:</span>
+                <div style="width: 150px; height: 20px; background: #333; border: 2px solid #fff; position: relative;">
+                    <div id="hpBar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #ff4444, #ff6666); transition: width 0.3s;"></div>
+                </div>
+                <span id="hpText" style="color: #ff4444; font-size: 0.8em;">100/100</span>
+            </span>
+            <span class="hud-item" id="scoreDisplay">Score: 0</span>
+            <span class="hud-item" id="progressDisplay">Distance: 0%</span>
+        </div>
+
+        <div class="game-frame">
+            <canvas id="gameCanvas" width="1000" height="600"></canvas>
+
+            <!-- Story Overlay -->
+            <div class="overlay" id="storyOverlay">
+                <div class="overlay-text">⚠ BAD NEWS ALERT ⚠</div>
+                <div class="overlay-story">
+                    The evil nightman kidnapped your date, just for the fun of it. Defeat his dragons to save your date and become the dayman.<br><br>
+                    WASD/Arrows to move • SPACE to shoot
+                </div>
+                <button class="overlay-btn" id="storyBtn">Save The Date</button>
+            </div>
+
+            <!-- Start Overlay -->
+            <div class="overlay hidden" id="startOverlay">
+                <div class="overlay-text">Save the Date!</div>
+                <div class="overlay-sub">Survive the journey! Kill dragons to make the way longer!</div>
+                <button class="overlay-btn" id="startBtn">Start Adventure</button>
+            </div>
+
+            <!-- Game Over Overlay -->
+            <div class="overlay hidden" id="gameOverOverlay">
+                <div class="overlay-text">Game Over</div>
+                <div class="overlay-sub" id="failScore">Score: 0</div>
+                <button class="overlay-btn" id="retryBtn">Try Again</button>
+            </div>
+
+            <!-- Win Overlay -->
+            <div class="overlay hidden" id="winOverlay">
+                <div class="overlay-text">YOU SAVED THE DATE!</div>
+                <div class="overlay-sub" id="winMessage">You defeated the dragons and rescued your love!</div>
+                <div class="overlay-sub" id="winScore">Score: 0</div>
+                <div class="overlay-sub" id="winTotal">Total Score: 0</div>
+                <button class="overlay-btn" id="replayBtn">Play Again</button>
+            </div>
+        </div>
+
+        <div class="controls-hint">WASD/Arrows to move • SPACE to shoot • Survive the journey to save your date! • The more dragons you kill, the longer the journey!</div>
+    </div>
+
+    <script>
+        // ============ SETUP ============
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 1000, H = 600;
+        const P = 8; // pixel size
+
+        // ============ MUSIC ============
+        const bgMusic = new Audio('music/battle.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.5;
+
+        // ============ SOUND EFFECTS ============
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playShootSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playHurtSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+            oscillator.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.15);
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
+        // ============ GAME CONSTANTS ============
+        const WIN_SCORE = 5000;
+        const BASE_DISTANCE = 3500; // Base pixels to reach the date
+        const DISTANCE_PER_DRAGON = 80; // Additional pixels per dragon killed
+        let TOTAL_DISTANCE = BASE_DISTANCE; // Total pixels to reach the date (dynamic)
+        const PLAYER_SPEED = 7;
+        const PROJECTILE_SPEED = 12;
+        const DRAGON_SPEED = 1.5;
+
+        // Obstacles
+        let obstacles = [];
+        let nextObstacleIn = 150;
+
+        // ============ GAME STATE ============
+        let gameState = 'story'; // story, start, playing, rescue, gameover, won, dancing
+        let score = 0;
+        let health = 100;
+        let maxHealth = 100;
+        let distance = 0;
+        let dragonsKilled = 0;
+        const DRAGONS_TO_WIN = 15; // Need to kill 15 dragons to win
+        let frame = 0;
+        let danceStartTime = 0;
+        let danceFrame = 0;
+
+        // Health packs
+        let healthPacks = [];
+        let nextHealthPackIn = 400;
+
+        // Player
+        let player = {
+            x: 50,
+            y: H / 2 - 30,
+            width: 60,
+            height: 100,
+            invincible: 0
+        };
+
+        // Projectiles
+        let projectiles = [];
+
+        // Dragons
+        let dragons = [];
+        let nextDragonIn = 400;
+
+        // Fireballs
+        let fireballs = [];
+
+        // Particles
+        let particles = [];
+
+        // Cage rescue
+        let cageKey = null;
+        let cageOpen = false;
+
+        // Keys
+        const keys = {};
+
+        // Get character data
+        const youChar = JSON.parse(localStorage.getItem('valentineYou')) || {
+            skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+            shirtColor: '#FF69B4', pantsColor: '#4169E1', eyeColor: '#3B2314', shoeColor: '#333333',
+            bodyType: 'male'
+        };
+        
+        const dateChar = JSON.parse(localStorage.getItem('valentineDate')) || {
+            skinColor: '#FFDCB5', hairStyle: 'long', hairColor: '#3B2314',
+            shirtColor: '#4a90e2', pantsColor: '#4169E1', eyeColor: '#3B2314', shoeColor: '#333333',
+            bodyType: 'female'
+        };
+
+        const catChar = localStorage.getItem('valentineCat') ? JSON.parse(localStorage.getItem('valentineCat')) : null;
+
+        // Get date's pronoun based on body type
+        const datePronoun = dateChar.bodyType === 'female' ? 'her' : 'him';
+        const datePronoun2 = dateChar.bodyType === 'female' ? 'she' : 'he';
+
+        // Update story text with correct pronouns
+        document.querySelector('.overlay-story').innerHTML = document.querySelector('.overlay-story').innerHTML
+            .replace('them', datePronoun)
+            .replace('them', datePronoun)
+            .replace('They', datePronoun2.charAt(0).toUpperCase() + datePronoun2.slice(1));
+
+        // ============ INPUT ============
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (gameState === 'playing') {
+                    shoot();
+                }
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function shoot() {
+            projectiles.push({
+                x: player.x + player.width,
+                y: player.y + player.height / 2,
+                width: 20,
+                height: 10
+            });
+            playShootSound();
+        }
+
+        // ============ DRAWING HELPERS ============
+        function px(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, P, P);
+        }
+
+        function rect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+        }
+
+        function darken(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.max(0, r - amt); g = Math.max(0, g - amt); b = Math.max(0, b - amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+
+        function lighten(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+
+        function drawDetailedCharacter(x, y, c, scale = 1) {
+            const P = 4 * scale; // smaller pixel size for game
+            const skin = c.skinColor, hair = c.hairColor, shirt = c.shirtColor;
+            const pants = c.pantsColor, eyes = c.eyeColor, shoe = c.shoeColor;
+            const ol = '#1A1A1A';
+            const isFemale = c.bodyType === 'female';
+            const skinDark = darken(skin, 35);
+            const skinLight = lighten(skin, 20);
+            const shirtDark = darken(shirt, 40);
+            const shirtLight = lighten(shirt, 30);
+            const pantsDark = darken(pants, 30);
+
+            // Helper functions for scaled drawing
+            function r(px, py, w, h, color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + px * P, y + py * P, w * P, h * P);
+            }
+            function p(px, py, color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + px * P, y + py * P, P, P);
+            }
+
+            // === HAIR BACK LAYER ===
+            if (c.hairStyle === 'long') {
+                r(5, 2, 14, 16, hair);
+                r(4, 5, 16, 15, hair);
+                r(3, 7, 3, 30, hair);
+                r(18, 7, 3, 30, hair);
+            }
+            if (c.hairStyle === 'ponytail') {
+                r(5, 2, 14, 5, hair);
+                r(4, 5, 16, 2, hair);
+                r(17, 7, 4, 2, hair);
+                r(20, 9, 3, 8, hair);
+                r(19, 17, 2, 3, hair);
+            }
+
+            // === HEAD ===
+            r(7, 6, 10, 12, skin);
+            r(8, 5, 8, 1, ol);
+            p(7, 5, ol);
+            p(16, 5, ol);
+            r(6, 6, 1, 12, ol);
+            r(17, 6, 1, 12, ol);
+            r(7, 18, 10, 1, ol);
+            p(6, 17, ol);
+            p(17, 17, ol);
+            r(7, 14, 2, 1, lighten(skin, 12));
+            r(15, 14, 2, 1, lighten(skin, 12));
+
+            // === EYEBROWS ===
+            if (isFemale) {
+                r(8, 9, 3, 1, darken(hair, 10));
+                r(13, 9, 3, 1, darken(hair, 10));
+            } else {
+                r(8, 8, 3, 1, darken(hair, 20));
+                r(13, 8, 3, 1, darken(hair, 20));
+                r(8, 9, 3, 1, darken(hair, 10));
+                r(13, 9, 3, 1, darken(hair, 10));
+            }
+
+            // === EYES ===
+            if (isFemale) {
+                r(8, 10, 3, 3, '#FFFFFF');
+                r(13, 10, 3, 3, '#FFFFFF');
+                r(9, 10, 2, 3, eyes);
+                r(14, 10, 2, 3, eyes);
+                p(9, 11, darken(eyes, 30));
+                p(14, 11, darken(eyes, 30));
+                p(10, 10, '#FFFFFF');
+                p(15, 10, '#FFFFFF');
+                p(8, 9, ol);
+                p(15, 9, ol);
+            } else {
+                r(8, 10, 3, 2, '#FFFFFF');
+                r(13, 10, 3, 2, '#FFFFFF');
+                r(9, 10, 2, 2, eyes);
+                r(14, 10, 2, 2, eyes);
+                p(10, 10, '#FFFFFF');
+                p(15, 10, '#FFFFFF');
+            }
+
+            // === NOSE & MOUTH ===
+            p(11, 13, skinDark);
+            p(12, 14, darken(skin, 18));
+            const lipColor = isFemale ? '#D4707A' : darken(skin, 25);
+            r(10, 16, 4, 1, lipColor);
+
+            // === HAIR FRONT LAYER ===
+            if (c.hairStyle === 'short') {
+                r(8, 1, 8, 1, hair);
+                r(7, 2, 10, 1, hair);
+                r(6, 3, 12, 3, hair);
+                r(5, 4, 1, 9, hair);
+                r(18, 4, 1, 9, hair);
+                r(7, 6, 2, 1, hair);
+                p(6, 6, hair); p(6, 7, hair); p(6, 8, hair);
+                p(17, 6, hair); p(17, 7, hair); p(17, 8, hair);
+                p(10, 2, darken(hair, 25));
+                p(8, 4, darken(hair, 15));
+                p(16, 4, darken(hair, 15));
+                p(13, 2, lighten(hair, 20));
+            } else if (c.hairStyle === 'long') {
+                r(5, 2, 14, 5, hair);
+                r(6, 1, 12, 1, hair);
+            } else if (c.hairStyle === 'curly') {
+                r(5, 2, 14, 5, hair);
+                r(6, 0, 12, 2, hair);
+                r(8, -1, 8, 1, hair);
+                r(3, 3, 3, 2, hair);
+                r(2, 5, 3, 2, hair);
+                r(3, 7, 3, 2, hair);
+                r(2, 9, 3, 2, hair);
+                r(3, 11, 3, 2, hair);
+                r(18, 3, 3, 2, hair);
+                r(19, 5, 3, 2, hair);
+                r(18, 7, 3, 2, hair);
+                r(19, 9, 3, 2, hair);
+                r(18, 11, 3, 2, hair);
+            } else if (c.hairStyle === 'ponytail') {
+                r(6, 3, 12, 4, hair);
+                r(7, 2, 10, 1, hair);
+                r(5, 5, 2, 3, hair);
+            } else if (c.hairStyle === 'mohawk') {
+                r(10, 0, 4, 6, hair);
+                r(9, 1, 6, 2, hair);
+                r(6, 4, 12, 3, hair);
+            }
+
+            // === EARS ===
+            r(5, 10, 1, 3, skin);
+            r(18, 10, 1, 3, skin);
+            p(5, 11, skinDark);
+            p(18, 11, skinDark);
+
+            // === NECK ===
+            if (isFemale) {
+                r(10, 19, 4, 2, skin);
+            } else {
+                r(9, 19, 6, 2, skin);
+            }
+
+            if (isFemale) {
+                // === FEMALE BODY ===
+                r(6, 21, 12, 9, shirt);
+                r(5, 21, 1, 8, ol);
+                r(18, 21, 1, 8, ol);
+                r(6, 21, 12, 1, ol);
+                // Chest area - flat shirt without nipple definition
+                r(7, 23, 10, 4, shirtLight);
+                r(7, 25, 10, 1, shirtDark);
+                r(6, 26, 1, 2, shirtDark);
+                r(17, 26, 1, 2, shirtDark);
+                r(9, 21, 6, 1, shirtDark);
+                r(11, 24, 1, 3, shirtDark);
+                r(8, 23, 2, 1, shirtLight);
+
+                // Arms
+                r(3, 22, 3, 6, skin);
+                r(18, 22, 3, 6, skin);
+                r(3, 22, 3, 2, shirt);
+                r(18, 22, 3, 2, shirt);
+                r(3, 23, 3, 1, shirtDark);
+                r(18, 23, 3, 1, shirtDark);
+                r(3, 28, 3, 2, skin);
+                r(18, 28, 3, 2, skin);
+                p(2, 29, skin);
+                p(21, 29, skin);
+                r(3, 30, 3, 1, ol);
+                r(18, 30, 3, 1, ol);
+                p(2, 30, ol);
+                p(21, 30, ol);
+
+                // Skirt/pants
+                r(4, 29, 16, 1, darken(pants, 50));
+                p(11, 29, '#DAA520');
+                p(12, 29, '#DAA520');
+                r(4, 30, 16, 7, pants);
+                r(3, 30, 1, 7, ol);
+                r(20, 30, 1, 7, ol);
+                r(11, 33, 2, 4, pantsDark);
+                r(6, 34, 3, 1, pantsDark);
+                r(15, 34, 3, 1, pantsDark);
+
+                // Shoes
+                r(3, 37, 8, 2, shoe);
+                r(13, 37, 8, 2, shoe);
+                r(2, 37, 1, 2, ol);
+                r(11, 37, 1, 2, ol);
+                r(12, 37, 1, 2, ol);
+                r(21, 37, 1, 2, ol);
+                r(2, 39, 10, 1, ol);
+                r(12, 39, 10, 1, ol);
+                r(3, 38, 8, 1, darken(shoe, 40));
+                r(13, 38, 8, 1, darken(shoe, 40));
+                p(4, 37, lighten(shoe, 40));
+                p(14, 37, lighten(shoe, 40));
+            } else {
+                // === MALE BODY ===
+                r(5, 21, 14, 9, shirt);
+                r(4, 21, 1, 9, ol);
+                r(19, 21, 1, 9, ol);
+                r(5, 21, 14, 1, ol);
+                r(9, 21, 6, 1, shirtDark);
+                p(8, 21, shirtDark);
+                p(15, 21, shirtDark);
+                r(11, 24, 1, 4, shirtDark);
+                r(13, 25, 1, 3, darken(shirt, 15));
+                r(8, 23, 2, 1, shirtLight);
+
+                // Belt
+                r(5, 29, 14, 1, darken(pants, 50));
+                p(11, 29, '#DAA520');
+                p(12, 29, '#DAA520');
+
+                // Arms
+                r(2, 22, 3, 7, skin);
+                r(19, 22, 3, 7, skin);
+                r(2, 22, 3, 3, shirt);
+                r(19, 22, 3, 3, shirt);
+                r(2, 24, 3, 1, shirtDark);
+                r(19, 24, 3, 1, shirtDark);
+                r(2, 29, 3, 2, skin);
+                r(19, 29, 3, 2, skin);
+                p(1, 30, skin);
+                p(22, 30, skin);
+                r(2, 31, 3, 1, ol);
+                r(19, 31, 3, 1, ol);
+                p(1, 31, ol);
+                p(22, 31, ol);
+
+                // Pants
+                r(5, 30, 14, 7, pants);
+                r(4, 30, 1, 7, ol);
+                r(19, 30, 1, 7, ol);
+                r(11, 33, 2, 4, pantsDark);
+                p(6, 31, pantsDark);
+                p(6, 32, pantsDark);
+                p(17, 31, pantsDark);
+                p(17, 32, pantsDark);
+                r(7, 34, 3, 1, pantsDark);
+                r(14, 34, 3, 1, pantsDark);
+
+                // Shoes
+                r(4, 37, 7, 2, shoe);
+                r(13, 37, 7, 2, shoe);
+                r(3, 37, 1, 2, ol);
+                r(11, 37, 1, 2, ol);
+                r(12, 37, 1, 2, ol);
+                r(20, 37, 1, 2, ol);
+                r(3, 39, 9, 1, ol);
+                r(12, 39, 9, 1, ol);
+                r(4, 38, 7, 1, darken(shoe, 40));
+                r(13, 38, 7, 1, darken(shoe, 40));
+                p(5, 37, lighten(shoe, 40));
+                p(14, 37, lighten(shoe, 40));
+                p(3, 38, ol);
+                p(20, 38, ol);
+            }
+        }
+
+        function drawHealthPack(pack) {
+            const x = pack.x;
+            const y = pack.y;
+            const size = pack.width;
+            
+            // Glow effect
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(x + size/2, y + size/2, size/2 + 5 + Math.sin(frame * 0.1) * 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Box
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(x, y, size, size);
+            
+            // Cross
+            ctx.fillStyle = '#fff';
+            const crossWidth = size * 0.3;
+            const crossHeight = size * 0.7;
+            ctx.fillRect(x + (size - crossWidth) / 2, y + (size - crossHeight) / 2, crossWidth, crossHeight);
+            ctx.fillRect(x + (size - crossHeight) / 2, y + (size - crossWidth) / 2, crossHeight, crossWidth);
+            
+            // Shine
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.fillRect(x + 3, y + 3, size * 0.3, size * 0.3);
+        }
+
+        function drawObstacle(obs) {
+            const x = obs.x;
+            const y = obs.y;
+            const w = obs.width;
+            const h = obs.height;
+
+            // Falling stone
+            // Main rock body
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.5, y);
+            ctx.lineTo(x + w * 0.9, y + h * 0.3);
+            ctx.lineTo(x + w, y + h * 0.7);
+            ctx.lineTo(x + w * 0.7, y + h);
+            ctx.lineTo(x + w * 0.3, y + h);
+            ctx.lineTo(x, y + h * 0.6);
+            ctx.lineTo(x + w * 0.1, y + h * 0.2);
+            ctx.closePath();
+            ctx.fill();
+
+            // Outline
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Cracks/detail
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.3, y + h * 0.3);
+            ctx.lineTo(x + w * 0.5, y + h * 0.5);
+            ctx.lineTo(x + w * 0.4, y + h * 0.7);
+            ctx.stroke();
+
+            // Highlight
+            ctx.fillStyle = '#888';
+            ctx.beginPath();
+            ctx.arc(x + w * 0.35, y + h * 0.35, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Falling trail
+            ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
+            ctx.fillRect(x + w * 0.3, y - 15, w * 0.4, 15);
+        }
+
+        function drawPlayer() {
+            drawDetailedCharacter(player.x, player.y, youChar, 1.0);
+        }
+
+        function drawDragon(d) {
+            const x = d.x;
+            const y = d.y;
+            const wingOffset = Math.sin(frame * 0.15) * 12;
+            const tailOffset = Math.sin(frame * 0.1) * 8;
+            const centerX = x + d.width / 2;
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(x + 50, y + 65, 35, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail (animated) - points toward player (left)
+            ctx.fillStyle = '#1a6b1a';
+            ctx.beginPath();
+            ctx.moveTo(x + 90, y + 40);
+            ctx.lineTo(x + 130, y + 30 + tailOffset);
+            ctx.lineTo(x + 140, y + 40 + tailOffset);
+            ctx.lineTo(x + 135, y + 50 + tailOffset);
+            ctx.lineTo(x + 95, y + 55);
+            ctx.closePath();
+            ctx.fill();
+            // Tail spikes
+            ctx.fillStyle = '#8B0000';
+            ctx.beginPath();
+            ctx.moveTo(x + 120, y + 35 + tailOffset);
+            ctx.lineTo(x + 125, y + 25 + tailOffset);
+            ctx.lineTo(x + 115, y + 30 + tailOffset);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x + 135, y + 40 + tailOffset);
+            ctx.lineTo(x + 140, y + 30 + tailOffset);
+            ctx.lineTo(x + 130, y + 35 + tailOffset);
+            ctx.fill();
+
+            // Back wing (mirrored to face left)
+            ctx.fillStyle = '#0d4d0d';
+            ctx.beginPath();
+            ctx.moveTo(x + 75, y + 20);
+            ctx.lineTo(x + 110, y - 30 + wingOffset);
+            ctx.lineTo(x + 85, y - 20 + wingOffset);
+            ctx.lineTo(x + 70, y - 10 + wingOffset);
+            ctx.closePath();
+            ctx.fill();
+            // Wing membrane lines
+            ctx.strokeStyle = '#1a6b1a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 75, y + 20);
+            ctx.lineTo(x + 95, y - 15 + wingOffset);
+            ctx.moveTo(x + 75, y + 20);
+            ctx.lineTo(x + 80, y - 10 + wingOffset);
+            ctx.stroke();
+
+            // Back leg
+            ctx.fillStyle = '#1a6b1a';
+            ctx.fillRect(x + 73, y + 50, 10, 20);
+            ctx.fillRect(x + 72, y + 68, 14, 8);
+            // Claws
+            ctx.fillStyle = '#333';
+            ctx.fillRect(x + 74, y + 74, 3, 5);
+            ctx.fillRect(x + 78, y + 74, 3, 5);
+            ctx.fillRect(x + 82, y + 74, 3, 5);
+
+            // Dragon body (main) - scaled down
+            ctx.fillStyle = '#228B22';
+            ctx.beginPath();
+            ctx.ellipse(x + 50, y + 35, 28, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Belly scales
+            ctx.fillStyle = '#90EE90';
+            ctx.beginPath();
+            ctx.ellipse(x + 50, y + 42, 20, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Scale details
+            ctx.strokeStyle = '#7dd87d';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 2; j++) {
+                    ctx.beginPath();
+                    ctx.arc(x + 40 + i * 10, y + 36 + j * 10, 3, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            // Spikes on back
+            ctx.fillStyle = '#8B0000';
+            ctx.beginPath();
+            ctx.moveTo(x + 80, y + 18);
+            ctx.lineTo(x + 85, y + 5);
+            ctx.lineTo(x + 75, y + 12);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x + 65, y + 14);
+            ctx.lineTo(x + 70, y);
+            ctx.lineTo(x + 60, y + 8);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x + 50, y + 16);
+            ctx.lineTo(x + 55, y + 4);
+            ctx.lineTo(x + 45, y + 12);
+            ctx.fill();
+
+            // Front leg
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(x + 10, y + 45, 11, 22);
+            ctx.fillRect(x + 8, y + 65, 16, 10);
+            // Claws
+            ctx.fillStyle = '#333';
+            ctx.fillRect(x + 9, y + 73, 4, 6);
+            ctx.fillRect(x + 14, y + 73, 4, 6);
+            ctx.fillRect(x + 19, y + 73, 4, 6);
+
+            // Front wing
+            ctx.fillStyle = '#1a6b1a';
+            ctx.beginPath();
+            ctx.moveTo(x + 25, y + 18);
+            ctx.lineTo(x + 60, y - 22 + wingOffset);
+            ctx.lineTo(x + 35, y - 15 + wingOffset);
+            ctx.lineTo(x + 20, y - 8 + wingOffset);
+            ctx.lineTo(x + 10, y + 8);
+            ctx.closePath();
+            ctx.fill();
+            // Wing membrane
+            ctx.fillStyle = 'rgba(50, 150, 50, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(x + 25, y + 18);
+            ctx.lineTo(x + 50, y - 15 + wingOffset);
+            ctx.lineTo(x + 30, y - 10 + wingOffset);
+            ctx.lineTo(x + 18, y - 4 + wingOffset);
+            ctx.closePath();
+            ctx.fill();
+
+            // Dragon head - facing LEFT toward player
+            ctx.fillStyle = '#228B22';
+            ctx.beginPath();
+            ctx.moveTo(x + 40, y + 12);
+            ctx.quadraticCurveTo(x, y - 5, x - 10, y + 15);
+            ctx.quadraticCurveTo(x - 15, y + 30, x, y + 40);
+            ctx.quadraticCurveTo(x + 20, y + 45, x + 35, y + 35);
+            ctx.lineTo(x + 40, y + 12);
+            ctx.fill();
+
+            // Jaw
+            ctx.fillStyle = '#1a6b1a';
+            ctx.beginPath();
+            ctx.moveTo(x + 15, y + 32);
+            ctx.lineTo(x - 10, y + 42);
+            ctx.lineTo(x + 5, y + 47);
+            ctx.closePath();
+            ctx.fill();
+
+            // Teeth
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(x + 5, y + 34);
+            ctx.lineTo(x + 2, y + 42);
+            ctx.lineTo(x - 1, y + 35);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x - 2, y + 37);
+            ctx.lineTo(x - 5, y + 44);
+            ctx.lineTo(x - 8, y + 38);
+            ctx.fill();
+
+            // Eye - facing left
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.ellipse(x + 15, y + 18, 8, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x + 13, y + 18, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(x + 11, y + 16, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyebrow ridge
+            ctx.fillStyle = '#1a6b1a';
+            ctx.beginPath();
+            ctx.moveTo(x + 28, y + 10);
+            ctx.quadraticCurveTo(x + 15, y + 5, x + 5, y + 12);
+            ctx.lineTo(x + 7, y + 16);
+            ctx.quadraticCurveTo(x + 15, y + 11, x + 25, y + 15);
+            ctx.closePath();
+            ctx.fill();
+
+            // Horn - pointing back/left
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y + 6);
+            ctx.lineTo(x + 5, y - 12);
+            ctx.lineTo(x, y + 8);
+            ctx.fill();
+            ctx.fillStyle = '#A0522D';
+            ctx.beginPath();
+            ctx.moveTo(x + 7, y + 4);
+            ctx.lineTo(x + 5, y - 8);
+            ctx.lineTo(x + 3, y + 6);
+            ctx.fill();
+
+            // Nostril
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x - 8, y + 25, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fire breath - shoots LEFT toward player
+            if (d.fireTimer > 0) {
+                // Outer glow
+                const gradient = ctx.createRadialGradient(x - 20, y + 38, 0, x - 40, y + 42, 30);
+                gradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
+                gradient.addColorStop(0.5, 'rgba(255, 200, 0, 0.4)');
+                gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(x - 10, y + 35);
+                ctx.lineTo(x - 60, y + 28);
+                ctx.lineTo(x - 55, y + 45);
+                ctx.lineTo(x - 65, y + 50);
+                ctx.lineTo(x - 10, y + 48);
+                ctx.fill();
+
+                // Core flame
+                ctx.fillStyle = '#FF4500';
+                ctx.beginPath();
+                ctx.moveTo(x - 10, y + 37);
+                ctx.lineTo(x - 45, y + 32);
+                ctx.lineTo(x - 40, y + 45);
+                ctx.lineTo(x - 50, y + 50);
+                ctx.lineTo(x - 10, y + 47);
+                ctx.fill();
+
+                // Inner bright flame
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.moveTo(x - 10, y + 40);
+                ctx.lineTo(x - 35, y + 36);
+                ctx.lineTo(x - 30, y + 45);
+                ctx.lineTo(x - 38, y + 48);
+                ctx.lineTo(x - 10, y + 45);
+                ctx.fill();
+            }
+        }
+
+        function drawProjectile(p) {
+            // Heart-shaped projectile
+            rect(p.x, p.y, p.width, p.height, '#ff69b4');
+            rect(p.x + 5, p.y - 5, 10, 8, '#ff1493');
+            rect(p.x + 5, p.y + 7, 10, 8, '#ff1493');
+            // Sparkle
+            if (frame % 4 === 0) {
+                particles.push({
+                    x: p.x + Math.random() * p.width,
+                    y: p.y + Math.random() * p.height,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    life: 10,
+                    color: '#FFD700'
+                });
+            }
+        }
+
+        function drawFireball(f) {
+            const radius = 12;
+            const gradient = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, radius);
+            gradient.addColorStop(0, '#FFD700');
+            gradient.addColorStop(0.5, '#FF4500');
+            gradient.addColorStop(1, '#8B0000');
+            
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        function drawDateAtEnd() {
+            // Castle first (background)
+            const castleX = W - 280;
+            const castleY = H - 320;
+
+            // Castle shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(castleX + 100, castleY + 280, 100, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main tower body
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(castleX + 50, castleY + 100, 100, 180);
+
+            // Tower top (cone roof)
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.moveTo(castleX + 40, castleY + 100);
+            ctx.lineTo(castleX + 100, castleY + 20);
+            ctx.lineTo(castleX + 160, castleY + 100);
+            ctx.closePath();
+            ctx.fill();
+
+            // Side towers
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(castleX + 20, castleY + 160, 35, 120);
+            ctx.fillRect(castleX + 145, castleY + 160, 35, 120);
+
+            // Side tower roofs
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.moveTo(castleX + 15, castleY + 160);
+            ctx.lineTo(castleX + 37, castleY + 100);
+            ctx.lineTo(castleX + 60, castleY + 160);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(castleX + 140, castleY + 160);
+            ctx.lineTo(castleX + 162, castleY + 100);
+            ctx.lineTo(castleX + 185, castleY + 160);
+            ctx.closePath();
+            ctx.fill();
+
+            // Windows with light
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(castleX + 70, castleY + 140, 15, 25);
+            ctx.fillRect(castleX + 115, castleY + 140, 15, 25);
+            ctx.fillRect(castleX + 30, castleY + 190, 12, 20);
+            ctx.fillRect(castleX + 158, castleY + 190, 12, 20);
+            // Window cross bars
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(castleX + 76, castleY + 140, 3, 25);
+            ctx.fillRect(castleX + 70, castleY + 148, 15, 3);
+            ctx.fillRect(castleX + 121, castleY + 140, 3, 25);
+            ctx.fillRect(castleX + 115, castleY + 148, 15, 3);
+
+            // Door
+            ctx.fillStyle = '#2a1a0a';
+            ctx.beginPath();
+            ctx.arc(castleX + 100, castleY + 280, 30, Math.PI, 0);
+            ctx.fill();
+            ctx.fillRect(castleX + 70, castleY + 280, 60, 40);
+
+            // Door details
+            ctx.fillStyle = '#1a0a0a';
+            ctx.fillRect(castleX + 98, castleY + 250, 4, 70);
+
+            // Door handles
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(castleX + 88, castleY + 295, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(castleX + 112, castleY + 295, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Torch on wall
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(castleX + 55, castleY + 240, 8, 20);
+            // Flame
+            const flameFlicker = Math.sin(frame * 0.2) * 3;
+            ctx.fillStyle = '#FF4500';
+            ctx.beginPath();
+            ctx.moveTo(castleX + 50, castleY + 240 + flameFlicker);
+            ctx.lineTo(castleX + 59, castleY + 210 + flameFlicker);
+            ctx.lineTo(castleX + 68, castleY + 240 + flameFlicker);
+            ctx.fill();
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.moveTo(castleX + 54, castleY + 232 + flameFlicker * 0.5);
+            ctx.lineTo(castleX + 59, castleY + 215 + flameFlicker * 0.5);
+            ctx.lineTo(castleX + 64, castleY + 232 + flameFlicker * 0.5);
+            ctx.fill();
+
+            // Date character (standing in front of castle)
+            const dateX = W - 200;
+            const dateY = H - 220;
+            drawDetailedCharacter(dateX, dateY, dateChar, 1.0);
+
+            // Cat (on the ground near date) - scaled to match character size
+            if (catChar) {
+                const catX = dateX + 85;
+                const catY = dateY + 50;
+                drawCatCharacter(catX, catY, catChar, 1.0);
+            }
+        }
+
+        function drawRescueScene() {
+            // Draw castle with cage containing date and cat
+            const castleX = W - 280;
+            const castleY = H - 320;
+
+            // Same castle drawing as drawDateAtEnd
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(castleX + 100, castleY + 280, 100, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(castleX + 50, castleY + 100, 100, 180);
+
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.moveTo(castleX + 40, castleY + 100);
+            ctx.lineTo(castleX + 100, castleY + 20);
+            ctx.lineTo(castleX + 160, castleY + 100);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(castleX + 20, castleY + 160, 35, 120);
+            ctx.fillRect(castleX + 145, castleY + 160, 35, 120);
+
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.moveTo(castleX + 15, castleY + 160);
+            ctx.lineTo(castleX + 37, castleY + 100);
+            ctx.lineTo(castleX + 60, castleY + 160);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(castleX + 140, castleY + 160);
+            ctx.lineTo(castleX + 162, castleY + 100);
+            ctx.lineTo(castleX + 185, castleY + 160);
+            ctx.closePath();
+            ctx.fill();
+
+            // Windows with light
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(castleX + 70, castleY + 140, 15, 25);
+            ctx.fillRect(castleX + 115, castleY + 140, 15, 25);
+            ctx.fillRect(castleX + 30, castleY + 190, 12, 20);
+            ctx.fillRect(castleX + 158, castleY + 190, 12, 20);
+
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(castleX + 76, castleY + 140, 3, 25);
+            ctx.fillRect(castleX + 70, castleY + 148, 15, 3);
+            ctx.fillRect(castleX + 121, castleY + 140, 3, 25);
+            ctx.fillRect(castleX + 115, castleY + 148, 15, 3);
+
+            // Cage
+            const cageX = castleX + 50;
+            const cageY = castleY + 100;
+            const cageWidth = 100;
+            const cageHeight = 140;
+
+            // Cage frame
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(cageX, cageY, cageWidth, cageHeight);
+
+            // Cage bars
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 3;
+            for (let i = 15; i < cageWidth; i += 15) {
+                ctx.beginPath();
+                ctx.moveTo(cageX + i, cageY);
+                ctx.lineTo(cageX + i, cageY + cageHeight);
+                ctx.stroke();
+            }
+
+            // Cage bars horizontal
+            for (let j = 20; j < cageHeight; j += 20) {
+                ctx.beginPath();
+                ctx.moveTo(cageX, cageY + j);
+                ctx.lineTo(cageX + cageWidth, cageY + j);
+                ctx.stroke();
+            }
+
+            // Cage lock (at the door)
+            if (!cageOpen) {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(cageX + cageWidth / 2 - 15, cageY + cageHeight - 30, 30, 25);
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(cageX + cageWidth / 2, cageY + cageHeight - 18, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Date character (in cage)
+            const dateX = W - 200;
+            const dateY = H - 220;
+            drawDetailedCharacter(dateX, dateY, dateChar, 1.0);
+
+            // Cat (on the ground near date, in cage) - scaled to match character size
+            if (catChar) {
+                const catX = dateX + 85;
+                const catY = dateY + 50;
+                drawCatCharacter(catX, catY, catChar, 1.0);
+            }
+
+            // Key
+            if (cageKey && !cageKey.collected) {
+                const keyFloat = Math.sin(frame * 0.1) * 5;
+                drawKey(cageKey.x, cageKey.y + keyFloat, cageKey);
+                
+                // Glow around key
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+                ctx.beginPath();
+                ctx.arc(cageKey.x + cageKey.width / 2, cageKey.y + cageKey.height / 2 + keyFloat, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Player
+            drawPlayer();
+
+            // Instruction text
+            if (cageKey && !cageKey.collected) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 20px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Grab the key to free your love!', W / 2, H / 2 - 50);
+            } else if (!cageOpen) {
+                ctx.fillStyle = '#ff69b4';
+                ctx.font = 'bold 24px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Key collected! Cage opening...', W / 2, H / 2 - 50);
+            }
+        }
+
+        function drawKey(x, y, key) {
+            ctx.fillStyle = '#FFD700';
+            
+            // Key head (ring)
+            ctx.beginPath();
+            ctx.arc(x + 15, y + 10, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#DAA520';
+            ctx.beginPath();
+            ctx.arc(x + 15, y + 10, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Key shaft
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(x + 12, y + 22, 6, 20);
+            
+            // Key teeth
+            ctx.fillRect(x + 8, y + 35, 7, 4);
+            ctx.fillRect(x + 8, y + 42, 7, 4);
+            ctx.fillRect(x + 10, y + 39, 11, 4);
+            
+            // Highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.fillRect(x + 13, y + 24, 2, 16);
+        }
+
+        // Helper function to check if point is inside dragon's hitbox
+        function isInsideDragonHitbox(d, px, py) {
+            return px >= d.x && px <= d.x + d.width &&
+                   py >= d.y && py <= d.y + d.height;
+        }
+
+        function drawCatCharacter(x, y, cat, scale = 1) {
+            const P = 3 * scale;
+            const fur = cat.furColor;
+            const eyes = cat.eyeColor;
+            const ol = '#1A1A1A';
+            const furDark = darken(fur, 35);
+            const furLight = lighten(fur, 30);
+            const nose = '#FFB6C1';
+
+            function r(px, py, w, h, color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + px * P, y + py * P, w * P, h * P);
+            }
+            function p(px, py, color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + px * P, y + py * P, P, P);
+            }
+
+            // Ears (triangles via pixels)
+            p(5, 3, ol); p(6, 3, ol);
+            p(4, 4, ol); p(5, 4, fur); p(6, 4, fur); p(7, 4, ol);
+            p(3, 5, ol); p(4, 5, fur); p(5, 5, furLight); p(6, 5, fur); p(7, 5, fur); p(8, 5, ol);
+
+            p(17, 3, ol); p(18, 3, ol);
+            p(16, 4, ol); p(17, 4, fur); p(18, 4, fur); p(19, 4, ol);
+            p(15, 5, ol); p(16, 5, fur); p(17, 5, fur); p(18, 5, furLight); p(19, 5, fur); p(20, 5, ol);
+
+            // Head
+            r(5, 6, 14, 10, fur);
+            // Head outline
+            r(5, 6, 14, 1, ol);
+            r(4, 7, 1, 8, ol);
+            r(19, 7, 1, 8, ol);
+            r(5, 15, 14, 1, ol);
+            p(4, 6, ol); p(19, 6, ol);
+
+            // Cheek fluff
+            r(4, 10, 1, 4, fur);
+            r(19, 10, 1, 4, fur);
+            p(3, 11, fur); p(3, 12, fur);
+            p(20, 11, fur); p(20, 12, fur);
+            // Outline cheek fluff
+            p(3, 10, ol); p(3, 13, ol);
+            p(2, 11, ol); p(2, 12, ol);
+            p(20, 10, ol); p(20, 13, ol);
+            p(21, 11, ol); p(21, 12, ol);
+
+            // Forehead shading
+            r(7, 7, 3, 1, furDark);
+            r(14, 7, 3, 1, furDark);
+            p(11, 7, furLight); p(12, 7, furLight);
+
+            // Eyes
+            r(7, 9, 3, 3, '#FFFFFF');
+            r(14, 9, 3, 3, '#FFFFFF');
+            r(8, 9, 2, 3, eyes);
+            r(15, 9, 2, 3, eyes);
+            // Pupils
+            p(8, 10, darken(eyes, 40));
+            p(15, 10, darken(eyes, 40));
+            // Shine
+            p(9, 9, '#FFFFFF');
+            p(16, 9, '#FFFFFF');
+
+            // Nose
+            p(11, 12, nose);
+            p(12, 12, nose);
+
+            // Mouth
+            p(10, 13, ol);
+            p(11, 13, ol);
+            p(12, 13, ol);
+            p(13, 13, ol);
+
+            // Whiskers
+            r(1, 11, 3, 1, ol);
+            r(1, 13, 3, 1, ol);
+            r(20, 11, 3, 1, ol);
+            r(20, 13, 3, 1, ol);
+
+            // Body
+            r(6, 16, 12, 6, fur);
+            r(5, 16, 1, 6, ol);
+            r(18, 16, 1, 6, ol);
+            // Belly lighter
+            r(9, 17, 6, 4, furLight);
+            // Body shading
+            p(6, 20, furDark); p(17, 20, furDark);
+
+            // Front legs
+            r(6, 22, 3, 3, fur);
+            r(15, 22, 3, 3, fur);
+            // Outline legs
+            r(5, 22, 1, 3, ol);
+            r(9, 22, 1, 3, ol);
+            r(14, 22, 1, 3, ol);
+            r(18, 22, 1, 3, ol);
+            // Paws
+            r(6, 24, 3, 1, furLight);
+            r(15, 24, 3, 1, furLight);
+            r(5, 25, 5, 1, ol);
+            r(14, 25, 5, 1, ol);
+
+            // Tail (curving to the right with animation)
+            const tailWag = Math.sin(frame * 0.1) * 3;
+            r(18, 18, 2, 1, fur);
+            r(19, 17, 2, 1, fur);
+            r(20, 16 + tailWag * 0.3, 2, 1, fur);
+            r(21, 15 + tailWag * 0.5, 2, 1, fur);
+            p(22, 14 + tailWag * 0.7, fur);
+            // Tail outline
+            p(18, 17, ol); p(19, 16, ol); p(20, 15 + tailWag * 0.3, ol); p(21, 14 + tailWag * 0.5, ol); p(22, 13 + tailWag * 0.7, ol);
+            p(20, 18, ol); p(21, 17 + tailWag * 0.3, ol); p(22, 16 + tailWag * 0.5, ol); p(23, 15 + tailWag * 0.7, ol); p(23, 14 + tailWag * 0.7, ol);
+        }
+
+        function drawParticles() {
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                
+                if (p.life > 0) {
+                    ctx.globalAlpha = p.life / 10;
+                    rect(p.x, p.y, 4, 4, p.color);
+                    ctx.globalAlpha = 1;
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        function drawBackground() {
+            // Dark castle background
+            const gradient = ctx.createLinearGradient(0, 0, 0, H);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(0.5, '#2d2d44');
+            gradient.addColorStop(1, '#1a1a2e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, W, H);
+
+            // Moon
+            ctx.fillStyle = '#F0E68C';
+            ctx.beginPath();
+            ctx.arc(W - 100, 80, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Mountains in background
+            ctx.fillStyle = '#1a1a1a';
+            for (let i = 0; i < 5; i++) {
+                const mountainX = i * 250 - (distance * 0.1) % 250;
+                ctx.beginPath();
+                ctx.moveTo(mountainX, H);
+                ctx.lineTo(mountainX + 150, H - 200);
+                ctx.lineTo(mountainX + 300, H);
+                ctx.fill();
+            }
+
+            // Ground
+            rect(0, H - 50, W, 50, '#2d2d2d');
+            // Ground details (don't scroll during rescue phase)
+            const offset = (gameState === 'rescue' || gameState === 'dancing') ? 0 : distance * 0.5;
+            for (let i = 0; i < 20; i++) {
+                const groundX = (i * 60 - offset) % (W + 60);
+                rect(groundX, H - 50, 30, 8, '#1a1a1a');
+            }
+        }
+
+        // ============ UPDATE ============
+        function update() {
+            if (gameState !== 'playing' && gameState !== 'rescue') return;
+            frame++;
+
+            // Calculate progress once for the whole update cycle
+            const killProgress = dragonsKilled / DRAGONS_TO_WIN;
+
+            // Speed increases over time (max 2x)
+            const speedMultiplier = 1 + Math.min(distance / TOTAL_DISTANCE, 1);
+            const currentSpeed = PLAYER_SPEED * speedMultiplier;
+
+            // Check if date is visible but not yet reached (stop world scrolling)
+            const dateVisible = distance > TOTAL_DISTANCE - W;
+            const dateReached = dateVisible && player.x >= W - 250;
+
+            // Move player
+            if (keys['w'] || keys['arrowup']) player.y = Math.max(0, player.y - currentSpeed);
+            if (keys['s'] || keys['arrowdown']) player.y = Math.min(H - player.height - 50, player.y + currentSpeed);
+            if (keys['a'] || keys['arrowleft']) player.x = Math.max(0, player.x - currentSpeed);
+            if (keys['d'] || keys['arrowright']) {
+                if (!dateReached) {
+                    player.x = Math.min(W - player.width, player.x + currentSpeed);
+                    if (!dateVisible) {
+                        distance += currentSpeed;
+                    }
+                }
+            }
+
+            // Check if player reached the date for rescue sequence
+            if (dateReached && gameState === 'playing') {
+                gameState = 'rescue';
+                // Spawn key near the cage but player has to walk to reach it
+                cageKey = {
+                    x: W - 350,
+                    y: H - 150,
+                    width: 30,
+                    height: 30,
+                    collected: false
+                };
+            }
+
+            // Invincibility
+            if (player.invincible > 0) player.invincible--;
+
+            // Update projectiles
+            projectiles = projectiles.filter(p => {
+                p.x += PROJECTILE_SPEED;
+                return p.x < W;
+            });
+
+            // Spawn dragons (gets harder as you kill more)
+            const dragonDifficulty = 1 + killProgress * 0.8; // Up to 1.8x spawn rate based on dragon kills
+            nextDragonIn--;
+            if (nextDragonIn <= 0) {
+                const dragonY = 50 + Math.random() * (H - 200);
+                dragons.push({
+                    x: W,
+                    y: dragonY,
+                    width: 100,
+                    height: 75,
+                    health: 1,
+                    fireTimer: 0,
+                    fireCooldown: (200 + Math.random() * 150) / dragonDifficulty // Fire faster as game progresses
+                });
+                nextDragonIn = (300 + Math.random() * 200) / dragonDifficulty;
+            }
+
+            // Spawn health packs
+            nextHealthPackIn--;
+            if (nextHealthPackIn <= 0) {
+                const packY = 80 + Math.random() * (H - 200);
+                healthPacks.push({
+                    x: W,
+                    y: packY,
+                    width: 30,
+                    height: 30,
+                    collected: false
+                });
+                nextHealthPackIn = 500 + Math.random() * 300;
+            }
+
+            // Spawn falling stones - only start after killing 5 dragons (about 33% progress)
+            const difficultyMultiplier = 1 + killProgress * 2; // Up to 3x harder based on dragon kills
+            const stonesEnabled = dragonsKilled >= 5; // Stones start after 5 dragons killed
+            const stoneDifficulty = stonesEnabled ? difficultyMultiplier : 0;
+            
+            nextObstacleIn--;
+            if (nextObstacleIn <= 0 && stonesEnabled) {
+                const stoneX = 100 + Math.random() * (W - 200);
+                obstacles.push({
+                    x: stoneX,
+                    y: -30,
+                    width: 25,
+                    height: 25,
+                    type: 'falling_stone',
+                    vy: 2 + Math.random() * 3 * stoneDifficulty
+                });
+                // Spawn rate gets faster as game progresses
+                nextObstacleIn = (150 + Math.random() * 100) / stoneDifficulty;
+            }
+
+            // Update falling stones
+            obstacles = obstacles.filter(obs => {
+                obs.y += obs.vy;
+
+                // Check collision with player
+                if (player.invincible <= 0 &&
+                    player.x < obs.x + obs.width && player.x + player.width > obs.x &&
+                    player.y < obs.y + obs.height && player.y + player.height > obs.y) {
+                    health -= 15;
+                    player.invincible = 60;
+                    playHurtSound();
+                    // Hit particles
+                    for (let i = 0; i < 8; i++) {
+                        particles.push({
+                            x: player.x + player.width / 2,
+                            y: player.y + player.height / 2,
+                            vx: (Math.random() - 0.5) * 6,
+                            vy: (Math.random() - 0.5) * 6,
+                            life: 15,
+                            color: '#666'
+                        });
+                    }
+                    if (health <= 0) {
+                        gameState = 'gameover';
+                        bgMusic.pause();
+                        document.getElementById('failScore').textContent = 'Score: ' + score;
+                        document.getElementById('gameOverOverlay').classList.remove('hidden');
+                    }
+                    return false; // Stone breaks on hit
+                }
+
+                return obs.y < H + 50;
+            });
+
+            // Update dragons
+            dragons = dragons.filter(d => {
+                d.x -= DRAGON_SPEED;
+
+                // Fire breath
+                d.fireCooldown--;
+                if (d.fireCooldown <= 0) {
+                    d.fireTimer = 30;
+                    // Shoot fireball
+                    fireballs.push({
+                        x: d.x + d.width,
+                        y: d.y + 25,
+                        vx: -3,
+                        vy: (Math.random() - 0.5) * 1
+                    });
+                    d.fireCooldown = 300 + Math.random() * 150;
+                }
+                if (d.fireTimer > 0) d.fireTimer--;
+
+                // Check collision with player (only bottom feet area)
+                const dragonFeetBox = {
+                    x: d.x + 10,
+                    y: d.y + 45,
+                    width: d.width - 20,
+                    height: 30
+                };
+                if (player.invincible <= 0 &&
+                    player.x < dragonFeetBox.x + dragonFeetBox.width && player.x + player.width > dragonFeetBox.x &&
+                    player.y < dragonFeetBox.y + dragonFeetBox.height && player.y + player.height > dragonFeetBox.y) {
+                    health -= 25;
+                    player.invincible = 60;
+                    playHurtSound();
+                    for (let j = 0; j < 5; j++) {
+                        particles.push({
+                            x: player.x + player.width / 2,
+                            y: player.y + player.height / 2,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: (Math.random() - 0.5) * 4,
+                            life: 12,
+                            color: '#228b22'
+                        });
+                    }
+                    if (health <= 0) {
+                        gameState = 'gameover';
+                        bgMusic.pause();
+                        document.getElementById('failScore').textContent = 'Score: ' + score;
+                        document.getElementById('gameOverOverlay').classList.remove('hidden');
+                    }
+                }
+
+                // Check collision with projectiles - use smaller hitbox matching dragon body
+                const dragonBodyBox = {
+                    x: d.x + 20,
+                    y: d.y + 10,
+                    width: d.width - 40,
+                    height: d.height - 30
+                };
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const p = projectiles[i];
+                    if (p.x < dragonBodyBox.x + dragonBodyBox.width && p.x + p.width > dragonBodyBox.x &&
+                        p.y < dragonBodyBox.y + dragonBodyBox.height && p.y + p.height > dragonBodyBox.y) {
+                        d.health--;
+                        projectiles.splice(i, 1);
+                        // Hit particles
+                        for (let j = 0; j < 5; j++) {
+                            particles.push({
+                                x: d.x + d.width / 2,
+                                y: d.y + d.height / 2,
+                                vx: (Math.random() - 0.5) * 5,
+                                vy: (Math.random() - 0.5) * 5,
+                                life: 15,
+                                color: '#ff69b4'
+                            });
+                        }
+                        if (d.health <= 0) {
+                            score += 200;
+                            dragonsKilled++;
+                            // Increase total distance based on dragons killed
+                            TOTAL_DISTANCE = BASE_DISTANCE + dragonsKilled * DISTANCE_PER_DRAGON;
+                            // Explosion particles
+                            for (let j = 0; j < 15; j++) {
+                                particles.push({
+                                    x: d.x + d.width / 2,
+                                    y: d.y + d.height / 2,
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: (Math.random() - 0.5) * 8,
+                                    life: 20,
+                                    color: ['#FF4500', '#FFD700', '#ff69b4'][Math.floor(Math.random() * 3)]
+                                });
+                            }
+                            return false;
+                        }
+                    }
+                }
+
+                return d.x > -100;
+            });
+
+            // Update fireballs
+            fireballs = fireballs.filter(f => {
+                f.x += f.vx;
+                f.y += f.vy;
+
+                // Check collision with player
+                if (player.invincible <= 0 &&
+                    f.x > player.x && f.x < player.x + player.width &&
+                    f.y > player.y && f.y < player.y + player.height) {
+                    health -= 20;
+                    player.invincible = 120;
+                    playHurtSound();
+                    // Hit particles
+                    for (let i = 0; i < 10; i++) {
+                        particles.push({
+                            x: player.x + player.width / 2,
+                            y: player.y + player.height / 2,
+                            vx: (Math.random() - 0.5) * 5,
+                            vy: (Math.random() - 0.5) * 5,
+                            life: 15,
+                            color: '#ff0000'
+                        });
+                    }
+                    if (health <= 0) {
+                        gameState = 'gameover';
+                        bgMusic.pause();
+                        document.getElementById('failScore').textContent = 'Score: ' + score;
+                        document.getElementById('gameOverOverlay').classList.remove('hidden');
+                    }
+                    return false;
+                }
+
+                return f.x > -20 && f.x < W + 20 && f.y > -20 && f.y < H + 20;
+            });
+
+            // Update health packs
+            healthPacks = healthPacks.filter(pack => {
+                pack.x -= DRAGON_SPEED;
+                
+                // Check collision with player - use full body for collection
+                if (!pack.collected &&
+                    player.x < pack.x + pack.width && player.x + player.width > pack.x &&
+                    player.y < pack.y + pack.height && player.y + player.height > pack.y) {
+                    pack.collected = true;
+                    health = Math.min(maxHealth, health + 30);
+                    // Heal particles
+                    for (let i = 0; i < 8; i++) {
+                        particles.push({
+                            x: pack.x + pack.width / 2,
+                            y: pack.y + pack.height / 2,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: (Math.random() - 0.5) * 4 - 2,
+                            life: 25,
+                            color: '#00ff00'
+                        });
+                    }
+                    return false;
+                }
+                
+                return pack.x > -50;
+            });
+
+            // Handle rescue phase - player needs to grab key and free date
+            if (gameState === 'rescue') {
+                // Check if player collected the key
+                if (cageKey && !cageKey.collected) {
+                    const collectBox = {
+                        x: player.x + 15,
+                        y: player.y + 25,
+                        width: player.width - 30,
+                        height: player.height - 50
+                    };
+                    if (collectBox.x < cageKey.x + cageKey.width && collectBox.x + collectBox.width > cageKey.x &&
+                        collectBox.y < cageKey.y + cageKey.height && collectBox.y + collectBox.height > cageKey.y) {
+                        cageKey.collected = true;
+                        cageOpen = true;
+                        // Key collected particles
+                        for (let i = 0; i < 10; i++) {
+                            particles.push({
+                                x: cageKey.x + cageKey.width / 2,
+                                y: cageKey.y + cageKey.height / 2,
+                                vx: (Math.random() - 0.5) * 6,
+                                vy: (Math.random() - 0.5) * 6,
+                                life: 20,
+                                color: '#FFD700'
+                            });
+                        }
+                        // Start dancing after a short delay
+                        setTimeout(() => {
+                            gameState = 'dancing';
+                            danceStartTime = Date.now();
+                        }, 1000);
+                    }
+                }
+            }
+
+            // Handle dancing cutscene
+            if (gameState === 'dancing') {
+                danceFrame++;
+                const danceDuration = 4000; // 4 seconds of dancing
+                
+                if (Date.now() - danceStartTime >= danceDuration) {
+                    gameState = 'won';
+                    bgMusic.pause();
+                    const finalScore = score + Math.floor(health / 10) * 500;
+                    setValentineLevelScore(4, finalScore);
+                    document.getElementById('winScore').textContent = 'Score: ' + finalScore;
+                    document.getElementById('winTotal').textContent = 'Total Score: ' + getValentineTotalScore();
+                    document.getElementById('winOverlay').classList.remove('hidden');
+                }
+            }
+
+            // HUD
+            const hpPercent = Math.max(0, (health / maxHealth) * 100);
+            document.getElementById('hpBar').style.width = hpPercent + '%';
+            document.getElementById('hpText').textContent = Math.max(0, health) + '/' + maxHealth;
+            document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
+            const progressPercent = Math.min(100, Math.floor((distance / TOTAL_DISTANCE) * 100));
+            document.getElementById('progressDisplay').textContent = 'Distance: ' + progressPercent + '%' + (dragonsKilled > 0 ? ' (' + dragonsKilled + ' dragons killed)' : '');
+        }
+
+        // ============ RENDER ============
+        function render() {
+            ctx.clearRect(0, 0, W, H);
+            drawBackground();
+
+            // During dancing, only show background and dancing scene
+            if (gameState === 'dancing') {
+                drawDancingScene();
+            } else if (gameState === 'rescue') {
+                // Draw rescue scene with cage and key
+                drawRescueScene();
+                // Draw particles
+                drawParticles();
+            } else {
+                // Draw date at the end if close enough
+                if (distance > TOTAL_DISTANCE - W) {
+                    drawDateAtEnd();
+                }
+
+                // Draw health packs
+                healthPacks.forEach(pack => drawHealthPack(pack));
+
+                // Draw obstacles
+                obstacles.forEach(obs => drawObstacle(obs));
+
+                // Draw dragons
+                dragons.forEach(d => drawDragon(d));
+
+                // Draw projectiles
+                projectiles.forEach(p => drawProjectile(p));
+
+                // Draw fireballs
+                fireballs.forEach(f => drawFireball(f));
+
+                // Draw player (with invincibility flicker)
+                if (player.invincible === 0 || frame % 4 < 2) {
+                    drawPlayer();
+                }
+
+                // Draw particles
+                drawParticles();
+            }
+
+            // Draw progress bar (based on distance to date) - hide during rescue and dancing
+            if (gameState !== 'rescue' && gameState !== 'dancing' && gameState !== 'won') {
+                const barWidth = 300;
+                const barHeight = 20;
+                const barX = (W - barWidth) / 2;
+                const barY = 20;
+                const distanceProgress = Math.min(1, distance / TOTAL_DISTANCE);
+                
+                ctx.fillStyle = '#333';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                ctx.fillStyle = '#ff69b4';
+                ctx.fillRect(barX, barY, barWidth * distanceProgress, barHeight);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+            }
+        }
+
+        function drawDancingScene() {
+            // Darken background slightly
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, W, H);
+
+            // Draw "YOU SAVED THE DATE!" text
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 40px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#ff69b4';
+            ctx.shadowBlur = 10;
+            ctx.fillText('YOU SAVED THE DATE!', W / 2, 80);
+            ctx.shadowBlur = 0;
+
+            // Draw hearts floating up
+            for (let i = 0; i < 5; i++) {
+                const heartX = (W / 2 - 200) + i * 100;
+                const heartY = 150 + Math.sin(danceFrame * 0.1 + i) * 20;
+                ctx.font = '30px serif';
+                ctx.fillText('💖', heartX, heartY);
+            }
+
+            // Draw player and date dancing
+            const danceY = H - 220;
+            const bounce = Math.abs(Math.sin(danceFrame * 0.15)) * 20;
+            
+            // Player dancing (bouncing)
+            drawDetailedCharacter(W / 2 - 80, danceY - bounce, youChar, 1.0);
+            
+            // Date dancing (bouncing with offset)
+            drawDetailedCharacter(W / 2 + 20, danceY - Math.abs(Math.sin(danceFrame * 0.15 + 1)) * 20, dateChar, 1.0);
+
+            // Draw cat dancing between them (if exists)
+            if (catChar) {
+                const catBounce = Math.abs(Math.sin(danceFrame * 0.2 + 2)) * 15;
+                drawCatCharacter(W / 2 - 20, danceY + 30 - catBounce, catChar, 1.0);
+            }
+
+            // Draw celebration text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 24px "Courier New", monospace';
+            ctx.fillText('Time to celebrate!', W / 2, H - 80);
+        }
+
+        // ============ GAME LOOP ============
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            console.log('startGame called!');
+            score = 0;
+            health = 100;
+            maxHealth = 100;
+            distance = 0;
+            dragonsKilled = 0;
+            frame = 0;
+            player.x = 50;
+            player.y = H / 2 - 30;
+            player.invincible = 0;
+            projectiles = [];
+            dragons = [];
+            nextDragonIn = 400;
+            healthPacks = [];
+            nextHealthPackIn = 400;
+            obstacles = [];
+            nextObstacleIn = 150;
+            fireballs = [];
+            particles = [];
+            cageKey = null;
+            cageOpen = false;
+            danceStartTime = 0;
+            danceFrame = 0;
+            gameState = 'playing';
+            console.log('gameState set to playing');
+            bgMusic.currentTime = 0;
+            try {
+                bgMusic.play().catch(e => console.log('Audio play error:', e));
+            } catch(e) {
+                console.log('Audio error:', e);
+            }
+            document.getElementById('storyOverlay').classList.add('hidden');
+            document.getElementById('startOverlay').classList.add('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            document.getElementById('winOverlay').classList.add('hidden');
+            console.log('Overlay visibility set');
+        }
+
+        document.getElementById('storyBtn').addEventListener('click', function() {
+            console.log('Story button clicked!');
+            startGame();
+        });
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('retryBtn').addEventListener('click', startGame);
+        document.getElementById('replayBtn').addEventListener('click', startGame);
+
+        // Start game loop
+        gameLoop();
+    </script>
+</body>
+</html>
