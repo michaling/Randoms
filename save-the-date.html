@@ -171,7 +171,7 @@
             <div class="overlay" id="storyOverlay">
                 <div class="overlay-text">⚠ BAD NEWS ALERT ⚠</div>
                 <div class="overlay-story">
-                    The evil nightman kidnapped your date, just for the fun of it. Defeat his dragons to save your date and become the dayman.<br><br>
+                    The evil nightman kidnapped your date, just for the fun of it. Defeat his dragons to save the date and become the nightman<br><br>
                     WASD/Arrows to move • SPACE to shoot
                 </div>
                 <button class="overlay-btn" id="storyBtn">Save The Date</button>
@@ -180,7 +180,6 @@
             <!-- Start Overlay -->
             <div class="overlay hidden" id="startOverlay">
                 <div class="overlay-text">Save the Date!</div>
-                <div class="overlay-sub">Survive the journey! Kill dragons to make the way longer!</div>
                 <button class="overlay-btn" id="startBtn">Start Adventure</button>
             </div>
 
@@ -201,7 +200,7 @@
             </div>
         </div>
 
-        <div class="controls-hint">WASD/Arrows to move • SPACE to shoot • Survive the journey to save your date! • The more dragons you kill, the longer the journey!</div>
+            <div class="controls-hint">WASD/Arrows to move • SPACE to shoot </div>
     </div>
 
     <script>
@@ -251,9 +250,11 @@
 
         // ============ GAME CONSTANTS ============
         const WIN_SCORE = 5000;
-        const BASE_DISTANCE = 3500; // Base pixels to reach the date
-        const DISTANCE_PER_DRAGON = 80; // Additional pixels per dragon killed
+        const BASE_DISTANCE = 5000; // Base pixels to reach the date
+        const DISTANCE_PER_DRAGON = 100; // Pixels REDUCED per dragon killed
+        const MIN_DISTANCE = 2000; // Minimum distance (even with many dragons killed)
         let TOTAL_DISTANCE = BASE_DISTANCE; // Total pixels to reach the date (dynamic)
+        const MIN_DRAGONS_REQUIRED = 5; // Must kill at least 5 dragons to save the date
         const PLAYER_SPEED = 7;
         const PROJECTILE_SPEED = 12;
         const DRAGON_SPEED = 1.5;
@@ -281,9 +282,9 @@
         // Player
         let player = {
             x: 50,
-            y: H / 2 - 30,
+            y: H / 2 - 78,
             width: 60,
-            height: 100,
+            height: 156,
             invincible: 0
         };
 
@@ -1438,7 +1439,7 @@
 
         // ============ UPDATE ============
         function update() {
-            if (gameState !== 'playing' && gameState !== 'rescue') return;
+            if (gameState !== 'playing' && gameState !== 'rescue' && gameState !== 'dancing') return;
             frame++;
 
             // Calculate progress once for the whole update cycle
@@ -1449,8 +1450,10 @@
             const currentSpeed = PLAYER_SPEED * speedMultiplier;
 
             // Check if date is visible but not yet reached (stop world scrolling)
-            const dateVisible = distance > TOTAL_DISTANCE - W;
-            const dateReached = dateVisible && player.x >= W - 250;
+            // Date only becomes visible when within W pixels of ACTUAL required distance
+            const dateVisible = distance >= TOTAL_DISTANCE - W;
+            // Date is only reached when player has traveled FULL distance AND killed enough dragons AND walked to end
+            const dateReached = distance >= TOTAL_DISTANCE && dragonsKilled >= MIN_DRAGONS_REQUIRED && player.x >= W - 250;
 
             // Move player
             if (keys['w'] || keys['arrowup']) player.y = Math.max(0, player.y - currentSpeed);
@@ -1459,7 +1462,8 @@
             if (keys['d'] || keys['arrowright']) {
                 if (!dateReached) {
                     player.x = Math.min(W - player.width, player.x + currentSpeed);
-                    if (!dateVisible) {
+                    // Continue traveling distance even when date is visible until fully reached
+                    if (distance < TOTAL_DISTANCE) {
                         distance += currentSpeed;
                     }
                 }
@@ -1622,12 +1626,13 @@
                     }
                 }
 
-                // Check collision with projectiles - use smaller hitbox matching dragon body
+                // Check collision with projectiles - use generous hitbox for easier shooting
+                // Main body area: center ellipse is at x+50, y+35 with 28x22 radius
                 const dragonBodyBox = {
-                    x: d.x + 20,
-                    y: d.y + 10,
-                    width: d.width - 40,
-                    height: d.height - 30
+                    x: d.x + 10,
+                    y: d.y + 5,
+                    width: d.width - 20,
+                    height: d.height - 15
                 };
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     const p = projectiles[i];
@@ -1649,8 +1654,8 @@
                         if (d.health <= 0) {
                             score += 200;
                             dragonsKilled++;
-                            // Increase total distance based on dragons killed
-                            TOTAL_DISTANCE = BASE_DISTANCE + dragonsKilled * DISTANCE_PER_DRAGON;
+                            // Reduce total distance based on dragons killed (killed dragons shorten the journey!)
+                            TOTAL_DISTANCE = Math.max(MIN_DISTANCE, BASE_DISTANCE - dragonsKilled * DISTANCE_PER_DRAGON);
                             // Explosion particles
                             for (let j = 0; j < 15; j++) {
                                 particles.push({
@@ -1769,7 +1774,7 @@
             // Handle dancing cutscene
             if (gameState === 'dancing') {
                 danceFrame++;
-                const danceDuration = 4000; // 4 seconds of dancing
+                const danceDuration = 50000; // 12 seconds of dancing
                 
                 if (Date.now() - danceStartTime >= danceDuration) {
                     gameState = 'won';
@@ -1788,7 +1793,7 @@
             document.getElementById('hpText').textContent = Math.max(0, health) + '/' + maxHealth;
             document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
             const progressPercent = Math.min(100, Math.floor((distance / TOTAL_DISTANCE) * 100));
-            document.getElementById('progressDisplay').textContent = 'Distance: ' + progressPercent + '%' + (dragonsKilled > 0 ? ' (' + dragonsKilled + ' dragons killed)' : '');
+            document.getElementById('progressDisplay').textContent = 'Distance: ' + Math.floor(distance) + '/' + TOTAL_DISTANCE + ' (' + progressPercent + '%)';
         }
 
         // ============ RENDER ============
@@ -1853,9 +1858,12 @@
         }
 
         function drawDancingScene() {
+            // Draw ground first
+            rect(0, H - 50, W, 50, '#2d2d2d');
+            
             // Darken background slightly
             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.fillRect(0, 0, W, H);
+            ctx.fillRect(0, 0, W, H - 50);
 
             // Draw "YOU SAVED THE DATE!" text
             ctx.fillStyle = '#FFD700';
@@ -1875,26 +1883,41 @@
                 ctx.fillText('💖', heartX, heartY);
             }
 
-            // Draw player and date dancing
-            const danceY = H - 220;
-            const bounce = Math.abs(Math.sin(danceFrame * 0.15)) * 20;
+            // Calculate ground position for all characters
+            const groundY = H - 50;
+
+            // Player dancing (bouncing up and down dramatically with sway)
+            const playerBounce = Math.abs(Math.sin(danceFrame * 0.05)) * 40;
+            const playerSway = Math.sin(danceFrame * 0.05) * 15;
+            const playerX = W / 2 - 100 + playerSway;
+            const playerY = groundY - player.height + playerBounce;
+            drawDetailedCharacter(playerX, playerY, youChar, 1.0);
             
-            // Player dancing (bouncing)
-            drawDetailedCharacter(W / 2 - 80, danceY - bounce, youChar, 1.0);
-            
-            // Date dancing (bouncing with offset)
-            drawDetailedCharacter(W / 2 + 20, danceY - Math.abs(Math.sin(danceFrame * 0.15 + 1)) * 20, dateChar, 1.0);
+            // Date dancing (bouncing with offset, opposite rhythm and sway)
+            const dateBounce = Math.abs(Math.sin(danceFrame * 0.05 + Math.PI)) * 40;
+            const dateSway = Math.sin(danceFrame * 0.05 + Math.PI) * 15;
+            const dateX = W / 2 + 40 + dateSway;
+            const dateY = groundY - player.height + dateBounce;
+            drawDetailedCharacter(dateX, dateY, dateChar, 1.0);
 
             // Draw cat dancing between them (if exists)
             if (catChar) {
-                const catBounce = Math.abs(Math.sin(danceFrame * 0.2 + 2)) * 15;
-                drawCatCharacter(W / 2 - 20, danceY + 30 - catBounce, catChar, 1.0);
+                const catBounce = Math.abs(Math.sin(danceFrame * 0.05 + 2)) * 25;
+                const catHeight = 96; // 32 units * 3 scale
+                const catX = W / 2 - 28;
+                const catY = groundY - catHeight + catBounce;
+                drawCatCharacter(catX, catY, catChar, 1.0);
             }
 
-            // Draw celebration text
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 24px "Courier New", monospace';
-            ctx.fillText('Time to celebrate!', W / 2, H - 80);
+            // Add celebration sparkles
+            for (let i = 0; i < 3; i++) {
+                const sparkleX = W / 2 + (Math.sin(danceFrame * 0.1 + i * 2) * 150);
+                const sparkleY = 200 + (Math.cos(danceFrame * 0.08 + i * 1.5) * 50);
+                ctx.fillStyle = Math.random() > 0.5 ? '#FFD700' : '#FF69B4';
+                ctx.beginPath();
+                ctx.arc(sparkleX, sparkleY, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
         // ============ GAME LOOP ============
@@ -1913,7 +1936,7 @@
             dragonsKilled = 0;
             frame = 0;
             player.x = 50;
-            player.y = H / 2 - 30;
+            player.y = H / 2 - 78;
             player.invincible = 0;
             projectiles = [];
             dragons = [];
