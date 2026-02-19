@@ -160,8 +160,12 @@
                 </div>
                 <span id="hpText" style="color: #ff4444; font-size: 0.8em;">100/100</span>
             </span>
+            <span class="hud-item" id="progressDisplay" style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 150px; height: 20px; background: #333; border: 2px solid #fff; position: relative;">
+                    <div id="progressBarFill" style="width: 0%; height: 100%; background: #ff69b4; transition: width 0.3s;"></div>
+                </div>
+            </span>
             <span class="hud-item" id="scoreDisplay">Score: 0</span>
-            <span class="hud-item" id="progressDisplay">Distance: 0%</span>
         </div>
 
         <div class="game-frame">
@@ -255,7 +259,7 @@
         const DISTANCE_PER_DRAGON = 100; // Pixels REDUCED per dragon killed
         const MIN_DISTANCE = 2000; // Minimum distance (even with many dragons killed)
         let TOTAL_DISTANCE = BASE_DISTANCE; // Total pixels to reach the date (dynamic)
-        const MIN_DRAGONS_REQUIRED = 5; // Must kill at least 5 dragons to save the date
+        const MIN_DRAGONS_REQUIRED = 10; // Must kill at least 10 dragons to save the date
         const PLAYER_SPEED = 7;
         const PROJECTILE_SPEED = 12;
         const DRAGON_SPEED = 1.5;
@@ -1552,7 +1556,7 @@
 
             // Spawn falling stones - only start after killing 5 dragons (about 33% progress)
             const difficultyMultiplier = 1 + killProgress * 2; // Up to 3x harder based on dragon kills
-            const stonesEnabled = dragonsKilled >= 5; // Stones start after 5 dragons killed
+            const stonesEnabled = dragonsKilled >= 3; // Stones start after 3 dragons killed
             const stoneDifficulty = stonesEnabled ? difficultyMultiplier : 0;
             
             nextObstacleIn--;
@@ -1574,8 +1578,8 @@
             obstacles = obstacles.filter(obs => {
                 obs.y += obs.vy;
 
-                // Check collision with player - skip during dancing
-                if (gameState !== 'dancing' && player.invincible <= 0 &&
+                // Check collision with player - skip during dancing and rescue
+                if (gameState === 'playing' && player.invincible <= 0 &&
                     player.x < obs.x + obs.width && player.x + player.width > obs.x &&
                     player.y < obs.y + obs.height && player.y + player.height > obs.y) {
                     health -= 15;
@@ -1623,8 +1627,8 @@
                 }
                 if (d.fireTimer > 0) d.fireTimer--;
 
-                // Check collision with player (only bottom feet area) - skip during dancing
-                if (gameState !== 'dancing') {
+                // Check collision with player (only bottom feet area) - skip during dancing and rescue
+                if (gameState === 'playing') {
                     const dragonFeetBox = {
                         x: d.x + 10,
                         y: d.y + 45,
@@ -1666,8 +1670,8 @@
                 f.x += f.vx;
                 f.y += f.vy;
 
-                // Check collision with player - skip during dancing
-                if (gameState !== 'dancing' && player.invincible <= 0 &&
+                // Check collision with player - skip during dancing and rescue
+                if (gameState === 'playing' && player.invincible <= 0 &&
                     f.x > player.x && f.x < player.x + player.width &&
                     f.y > player.y && f.y < player.y + player.height) {
                     health -= 20;
@@ -1780,10 +1784,13 @@
             document.getElementById('hpText').textContent = Math.max(0, health) + '/' + maxHealth;
             document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
 
-            // Progress bar based ONLY on dragons killed
+            // Progress bar: 75% based on dragons killed, 25% on distance traveled
             const dragonProgress = Math.min(1, dragonsKilled / MIN_DRAGONS_REQUIRED);
-            let progressPercent = Math.floor(dragonProgress * 100);
-            document.getElementById('progressDisplay').textContent = `Progress: ${progressPercent}% (${dragonsKilled}/${MIN_DRAGONS_REQUIRED} dragons)`;
+            const distanceProgress = Math.min(1, distance / TOTAL_DISTANCE);
+            const totalProgress = (dragonProgress * 0.75) + (distanceProgress * 0.25);
+            let progressPercent = Math.floor(totalProgress * 100);
+            // Update the pink bar fill only - no text needed
+            document.getElementById('progressBarFill').style.width = progressPercent + '%';
         }
 
         // ============ RENDER ============
@@ -1829,22 +1836,7 @@
                 drawParticles();
             }
 
-            // Draw progress bar (based ONLY on dragons killed) - hide during rescue and dancing
-            if (gameState !== 'rescue' && gameState !== 'dancing' && gameState !== 'won') {
-                const barWidth = 300;
-                const barHeight = 20;
-                const barX = (W - barWidth) / 2;
-                const barY = 20;
-                const dragonProgress = Math.min(1, dragonsKilled / MIN_DRAGONS_REQUIRED);
-                
-                ctx.fillStyle = '#333';
-                ctx.fillRect(barX, barY, barWidth, barHeight);
-                ctx.fillStyle = '#ff69b4';
-                ctx.fillRect(barX, barY, barWidth * dragonProgress, barHeight);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(barX, barY, barWidth, barHeight);
-            }
+            
         }
 
         function drawDancingScene() {
