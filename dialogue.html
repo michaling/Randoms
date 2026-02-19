@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 5</title>
+    <script src="shared.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #a8d8ff;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,.1) 2px, rgba(255,255,255,.1) 4px);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            image-rendering: pixelated;
+        }
+
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .page-title {
+            color: #4a90e2;
+            font-size: 2em;
+            text-shadow: 4px 4px 0px rgba(255, 105, 180, 0.3);
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .scene-frame {
+            position: relative;
+            border: 8px solid #4a90e2;
+            box-shadow: 
+                0 0 0 4px #fff,
+                0 0 0 12px #ff69b4,
+                8px 8px 0 12px rgba(0,0,0,0.3);
+            width: 100%;
+            overflow: hidden;
+            background: #222;
+            cursor: pointer;
+        }
+
+        .scene-layers {
+            position: relative;
+            width: 100%;
+            padding-bottom: 62.5%;
+        }
+
+        .bg-canvas, .char-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        .choices-container {
+            width: 100%;
+            max-width: 800px;
+            background: #2a2a2e;
+            border: 4px solid #4a4a4e;
+            padding: 20px;
+            margin-top: 10px;
+            height: 220px;
+            box-sizing: border-box;
+        }
+
+        .dialogue-choices {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .dialogue-choices {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .choice-btn {
+            padding: 15px;
+            font-size: 0.95em;
+            border: 2px solid #555;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            background: #1a1a1e;
+            color: #fff;
+            text-align: center;
+            transition: all 0.1s;
+            text-transform: none;
+            letter-spacing: 0.5px;
+            height: 80px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            line-height: 1.3;
+        }
+
+        .choice-btn:hover {
+            background: #3a3a3e;
+            border-color: #777;
+        }
+
+        .choice-btn:active {
+            background: #4a4a4e;
+        }
+
+        .choice-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 20;
+        }
+
+        .overlay.hidden { display: none; }
+
+        @keyframes perfectPop {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+            70% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .overlay-text {
+            color: #fff;
+            font-size: 2.5em;
+            font-weight: bold;
+            text-shadow: 4px 4px 0 #ff69b4;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .overlay-sub {
+            color: #87ceeb;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .overlay-btn {
+            padding: 15px 40px;
+            font-size: 1.3em;
+            border: 4px solid #000;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            background: #ff69b4;
+            color: #fff;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: transform 0.1s;
+        }
+
+        .overlay-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <h1 class="page-title">Boss Fight</h1>
+        
+        <div class="scene-frame" id="sceneFrame">
+            <div class="scene-layers">
+                <canvas id="bgCanvas" class="bg-canvas" width="640" height="400"></canvas>
+                <canvas id="charCanvas" class="char-canvas" width="640" height="400"></canvas>
+            </div>
+
+
+            <!-- Start Overlay -->
+            <div class="overlay" id="startOverlay">
+                <div class="overlay-text">Level 5</div>
+                <div class="overlay-sub">After defeating the dragons...<br>It's time for your date!<br><br>Choose your words wisely...</div>
+                <button class="overlay-btn" id="startBtn">Start Date</button>
+            </div>
+
+            <!-- Win Overlay -->
+            <div class="overlay hidden" id="winOverlay">
+                <div class="overlay-text">Perfect Date!</div>
+                <div class="overlay-sub" id="winMessage">You got rizz my man</div>
+                <button class="overlay-btn" id="replayBtn">Play Again</button>
+            </div>
+
+            <!-- Lose Overlay -->
+            <div class="overlay hidden" id="loseOverlay">
+                <div class="overlay-text">Date Disaster!</div>
+                <div class="overlay-sub" id="loseMessage">You really messed up dude</div>
+                <button class="overlay-btn" id="retryBtn">Try Again</button>
+            </div>
+        </div>
+
+        <div class="choices-container" id="choicesContainer" style="display: none;">
+            <div class="dialogue-choices" id="dialogueChoices"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============ CHARACTER DATA ============
+        const youChar = JSON.parse(localStorage.getItem('valentineYou')) || {
+            skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+            shirtColor: '#FF69B4', pantsColor: '#4169E1', eyeColor: '#3B2314', shoeColor: '#333333',
+            bodyType: 'male'
+        };
+        const dateChar = JSON.parse(localStorage.getItem('valentineDate')) || {
+            skinColor: '#FFDCB5', hairStyle: 'short', hairColor: '#3B2314',
+            shirtColor: '#4a90e2', pantsColor: '#1A1A1A', eyeColor: '#4a90e2', shoeColor: '#333333',
+            bodyType: 'female'
+        };
+        const catChar = JSON.parse(localStorage.getItem('valentineCat')) || null;
+        const dateSettings = JSON.parse(localStorage.getItem('valentineDateSettings')) || { location: 'beach' };
+
+        // ============ CANVAS SETUP ============
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const charCanvas = document.getElementById('charCanvas');
+        const charCtx = charCanvas.getContext('2d');
+        const W = 640, H = 400;
+        const P = 5;
+
+        // ============ GAME STATE ============
+        let currentNode = 'start';
+        let gameActive = false;
+        let frame = 0;
+        let currentBubble = null;
+        let isLoseAnimating = false;
+        let loserDatePos = 76;
+
+        // ============ DIALOGUE TREE ============
+        const dialogueTree = {
+            'start': {
+                speaker: 'Date',
+                text: 'What took you so long?',
+                choices: [
+                    { text: "Those dragons were huge", next: 'dragons' },
+                    { text: "Jeez, stop nagging me", next: 'nagging_bad' },
+                    { text: "I got lost in your eyes", next: 'eyes' },
+                    { text: "Skill issue", next: 'skill_issue' }
+                ]
+            },
+            'dragons': {
+                speaker: 'Date',
+                text: "I've seen bigger",
+                choices: [
+                    { text: "You've seen bigger dragons?", next: 'bigger_dragons' },
+                    { text: "Yeah, in my pants", next: 'pants' },
+                    { text: "Ok, I trust you", next: 'trust_you' }
+                ]
+            },
+            'nagging_bad': {
+                speaker: 'Date',
+                text: "Drop dead",
+                end: 'lose'
+            },
+            'eyes': {
+                speaker: 'Date',
+                text: "but I was in a far away cage",
+                choices: [
+                    { text: "Oh right", next: 'oh_right' },
+                    { text: "I see your eyes wherever I go", next: 'see_eyes' }
+                ]
+            },
+            'oh_right': {
+                speaker: 'Date',
+                text: "You were probably staring at some other bimbo's eyes. You men are all the same",
+                end: 'lose'
+            },
+            'see_eyes': {
+                speaker: 'Date',
+                text: "gay",
+                end: 'lose'
+            },
+            'skill_issue': {
+                speaker: 'Date',
+                text: "nice",
+                next: 'player_nice_skill'
+            },
+            'player_nice_skill': {
+                speaker: 'You',
+                text: "nice",
+                end: 'win'
+            },
+            'bigger_dragons': {
+                speaker: 'Date',
+                text: "yes, yes I did",
+                next: 'player_when'
+            },
+            'player_when': {
+                speaker: 'You',
+                text: "When?",
+                next: 'when'
+            },
+            'pants': {
+                speaker: 'Date',
+                text: "nice",
+                next: 'player_nice_pants'
+            },
+            'player_nice_pants': {
+                speaker: 'You',
+                text: "nice",
+                end: 'win'
+            },
+            'trust_you': {
+                speaker: 'Date',
+                text: "Yeah, you think I saw dragons before?",
+                next: 'you_said'
+            },
+            'you_said': {
+                speaker: 'You',
+                text: "You just said t-",
+                next: 'joking'
+            },
+            'joking': {
+                speaker: 'Date',
+                text: "I was clearly JOKING, gosh",
+                end: 'lose'
+            },
+            'when': {
+                speaker: 'Date',
+                text: "Are you calling me a liar?",
+                choices: [
+                    { text: "Well I ain't calling you a truther", next: 'truther' },
+                    { text: "No, I just find it hard to believe", next: 'hard_to_believe' },
+                    { text: "I was just curious", next: 'just_curious' }
+                ]
+            },
+            'truther': {
+                speaker: 'Date',
+                text: "Oh fuck off",
+                end: 'lose'
+            },
+            'hard_to_believe': {
+                speaker: 'Date',
+                text: "Oh wow",
+                end: 'lose'
+            },
+            'just_curious': {
+                speaker: 'Date',
+                text: "Well, there. You caught me. I've never seen bigger dragons. Happy now?",
+                end: 'lose'
+            }
+        };
+
+        // ============ PIXEL HELPERS ============
+        function px(c, x, y, color) {
+            c.fillStyle = color;
+            c.fillRect(x * P, y * P, P, P);
+        }
+        function rect(c, x, y, w, h, color) {
+            c.fillStyle = color;
+            c.fillRect(x * P, y * P, w * P, h * P);
+        }
+        function darken(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.max(0, r - amt); g = Math.max(0, g - amt); b = Math.max(0, b - amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+        function lighten(hex, amt) {
+            let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+            return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+        }
+
+        // ============ DRAW CHARACTER ============
+        function drawCharAt(c, ox, oy, ch) {
+            const _px = (x, y, col) => px(c, ox + x, oy + y, col);
+            const _rect = (x, y, w, h, col) => rect(c, ox + x, oy + y, w, h, col);
+
+            const skin = ch.skinColor, hair = ch.hairColor, shirt = ch.shirtColor;
+            const pants = ch.pantsColor, eyes = ch.eyeColor, shoe = ch.shoeColor;
+            const ol = '#1A1A1A';
+            const isFemale = ch.bodyType === 'female';
+            const skinDark = darken(skin, 35);
+            const shirtDark = darken(shirt, 40);
+            const shirtLight = lighten(shirt, 30);
+            const pantsDark = darken(pants, 30);
+            const lipColor = isFemale ? '#D4707A' : darken(skin, 25);
+
+            if (ch.hairStyle === 'long') {
+                _rect(5, 2, 14, 16, hair); _rect(4, 5, 16, 15, hair);
+                _rect(3, 7, 3, 14, hair); _rect(18, 7, 3, 14, hair);
+            }
+            if (ch.hairStyle === 'ponytail') {
+                _rect(5, 2, 14, 5, hair); _rect(4, 5, 16, 2, hair);
+                _rect(17, 7, 4, 2, hair); _rect(20, 9, 3, 8, hair); _rect(19, 17, 2, 3, hair);
+            }
+            _rect(7, 6, 10, 12, skin);
+            _rect(8, 5, 8, 1, ol); _px(7, 5, ol); _px(16, 5, ol);
+            _rect(6, 6, 1, 12, ol); _rect(17, 6, 1, 12, ol);
+            _rect(7, 18, 10, 1, ol); _px(6, 17, ol); _px(17, 17, ol);
+            if (isFemale) {
+                _rect(8, 9, 3, 1, darken(hair, 10)); _rect(13, 9, 3, 1, darken(hair, 10));
+            } else {
+                _rect(8, 8, 3, 1, darken(hair, 20)); _rect(13, 8, 3, 1, darken(hair, 20));
+                _rect(8, 9, 3, 1, darken(hair, 10)); _rect(13, 9, 3, 1, darken(hair, 10));
+            }
+            if (isFemale) {
+                _rect(8, 10, 3, 3, '#FFF'); _rect(13, 10, 3, 3, '#FFF');
+                _rect(9, 10, 2, 3, eyes); _rect(14, 10, 2, 3, eyes);
+                _px(9, 11, darken(eyes, 30)); _px(14, 11, darken(eyes, 30));
+                _px(10, 10, '#FFF'); _px(15, 10, '#FFF');
+            } else {
+                _rect(8, 10, 3, 2, '#FFF'); _rect(13, 10, 3, 2, '#FFF');
+                _rect(9, 10, 2, 2, eyes); _rect(14, 10, 2, 2, eyes);
+                _px(10, 10, '#FFF'); _px(15, 10, '#FFF');
+            }
+            _px(11, 13, skinDark); _px(12, 14, darken(skin, 18));
+            _rect(10, 16, 4, 1, lipColor);
+            if (ch.hairStyle === 'short') {
+                _rect(8, 1, 8, 1, hair); _rect(7, 2, 10, 1, hair);
+                _rect(6, 3, 12, 3, hair); _rect(5, 4, 1, 9, hair); _rect(18, 4, 1, 9, hair);
+                _rect(7, 6, 2, 1, hair);
+                _px(6, 6, hair); _px(6, 7, hair); _px(6, 8, hair);
+                _px(17, 6, hair); _px(17, 7, hair); _px(17, 8, hair);
+            } else if (ch.hairStyle === 'long') {
+                _rect(5, 2, 14, 5, hair); _rect(6, 1, 12, 1, hair);
+            } else if (ch.hairStyle === 'curly') {
+                _rect(5, 2, 14, 5, hair); _rect(6, 0, 12, 2, hair); _rect(8, -1, 8, 1, hair);
+                _rect(3, 3, 3, 2, hair); _rect(2, 5, 3, 2, hair);
+                _rect(3, 7, 3, 2, hair); _rect(2, 9, 3, 2, hair); _rect(3, 11, 3, 2, hair);
+                _rect(18, 3, 3, 2, hair); _rect(19, 5, 3, 2, hair);
+                _rect(18, 7, 3, 2, hair); _rect(19, 9, 3, 2, hair); _rect(18, 11, 3, 2, hair);
+            } else if (ch.hairStyle === 'ponytail') {
+                _rect(6, 3, 12, 4, hair); _rect(7, 2, 10, 1, hair); _rect(5, 5, 2, 3, hair);
+            } else if (ch.hairStyle === 'mohawk') {
+                _rect(10, 0, 4, 6, hair); _rect(9, 1, 6, 2, hair); _rect(6, 4, 12, 3, hair);
+            }
+            _rect(5, 10, 1, 3, skin); _rect(18, 10, 1, 3, skin);
+            if (isFemale) { _rect(10, 19, 4, 2, skin); } else { _rect(9, 19, 6, 2, skin); }
+            if (isFemale) {
+                _rect(6, 21, 12, 9, shirt);
+                _rect(5, 21, 1, 8, ol); _rect(18, 21, 1, 8, ol); _rect(6, 21, 12, 1, ol);
+                _rect(3, 22, 3, 6, skin); _rect(18, 22, 3, 6, skin);
+                _rect(3, 22, 3, 2, shirt); _rect(18, 22, 3, 2, shirt);
+                _rect(3, 28, 3, 2, skin); _rect(18, 28, 3, 2, skin);
+                _rect(3, 30, 3, 1, ol); _rect(18, 30, 3, 1, ol);
+                _rect(4, 29, 16, 1, darken(pants, 50));
+                _rect(4, 30, 16, 7, pants);
+                _rect(3, 30, 1, 7, ol); _rect(20, 30, 1, 7, ol);
+                _rect(3, 37, 8, 2, shoe); _rect(13, 37, 8, 2, shoe);
+                _rect(2, 37, 1, 2, ol); _rect(11, 37, 1, 2, ol);
+                _rect(12, 37, 1, 2, ol); _rect(21, 37, 1, 2, ol);
+                _rect(2, 39, 10, 1, ol); _rect(12, 39, 10, 1, ol);
+            } else {
+                _rect(5, 21, 14, 9, shirt);
+                _rect(4, 21, 1, 9, ol); _rect(19, 21, 1, 9, ol); _rect(5, 21, 14, 1, ol);
+                _rect(2, 22, 3, 7, skin); _rect(19, 22, 3, 7, skin);
+                _rect(2, 22, 3, 3, shirt); _rect(19, 22, 3, 3, shirt);
+                _rect(2, 29, 3, 2, skin); _rect(19, 29, 3, 2, skin);
+                _rect(2, 31, 3, 1, ol); _rect(19, 31, 3, 1, ol);
+                _rect(5, 29, 14, 1, darken(pants, 50));
+                _rect(5, 30, 14, 7, pants);
+                _rect(4, 30, 1, 7, ol); _rect(19, 30, 1, 7, ol);
+                _rect(4, 37, 7, 2, shoe); _rect(13, 37, 7, 2, shoe);
+                _rect(3, 37, 1, 2, ol); _rect(11, 37, 1, 2, ol);
+                _rect(12, 37, 1, 2, ol); _rect(20, 37, 1, 2, ol);
+                _rect(3, 39, 9, 1, ol); _rect(12, 39, 9, 1, ol);
+            }
+        }
+
+        // ============ DRAW CAT ============
+        function drawCatAt(c, ox, oy, cat) {
+            const _px = (x, y, col) => px(c, ox + x, oy + y, col);
+            const _rect = (x, y, w, h, col) => rect(c, ox + x, oy + y, w, h, col);
+            const fur = cat.furColor, eyes = cat.eyeColor, ol = '#1A1A1A';
+            const furDark = darken(fur, 35), furLight = lighten(fur, 30), nose = '#FFB6C1';
+            _px(1, 0, ol); _px(2, 0, ol);
+            _px(0, 1, ol); _px(1, 1, fur); _px(2, 1, fur); _px(3, 1, ol);
+            _px(8, 0, ol); _px(9, 0, ol);
+            _px(7, 1, ol); _px(8, 1, fur); _px(9, 1, fur); _px(10, 1, ol);
+            _rect(1, 2, 9, 6, fur);
+            _rect(0, 2, 1, 6, ol); _rect(10, 2, 1, 6, ol);
+            _rect(1, 2, 9, 1, ol); _rect(1, 7, 9, 1, ol);
+            _rect(2, 4, 2, 2, '#FFF'); _rect(7, 4, 2, 2, '#FFF');
+            _px(3, 4, eyes); _px(3, 5, eyes); _px(8, 4, eyes); _px(8, 5, eyes);
+            _px(3, 5, darken(eyes, 40)); _px(8, 5, darken(eyes, 40));
+            _px(5, 5, nose);
+            _px(4, 6, ol); _px(5, 6, ol); _px(6, 6, ol);
+            _px(0, 5, ol); _px(10, 5, ol);
+            _rect(2, 8, 7, 4, fur);
+            _rect(1, 8, 1, 4, ol); _rect(9, 8, 1, 4, ol);
+            _rect(4, 9, 3, 2, furLight);
+            _rect(2, 12, 2, 2, fur); _rect(7, 12, 2, 2, fur);
+            _rect(1, 12, 1, 2, ol); _rect(4, 12, 1, 2, ol);
+            _rect(6, 12, 1, 2, ol); _rect(9, 12, 1, 2, ol);
+            _rect(1, 14, 4, 1, ol); _rect(6, 14, 4, 1, ol);
+            _px(9, 9, fur); _px(10, 8, fur); _px(11, 7, fur); _px(12, 6, fur);
+            _px(10, 9, ol); _px(11, 8, ol); _px(12, 7, ol); _px(13, 6, ol);
+            _px(9, 8, ol); _px(10, 7, ol); _px(11, 6, ol); _px(12, 5, ol);
+        }
+
+        // ============ LOCATION BACKGROUNDS ============
+        const locationImages = {
+            beach: 'places/beach.webp',
+            park: 'places/park.webp',
+            city: 'places/city.jpg',
+            mountain: 'places/mountain.jpg',
+            home: 'places/home.avif',
+            rooftop: 'places/rooftop.avif'
+        };
+
+        // ============ DRAW BACKGROUND ============
+        function drawBackground() {
+            const loc = dateSettings.location;
+            const bgImg = new Image();
+            bgImg.src = locationImages[loc];
+            bgImg.onload = () => {
+                const scale = Math.max(W / bgImg.width, H / bgImg.height);
+                const sw = bgImg.width * scale;
+                const sh = bgImg.height * scale;
+                const sx = (W - sw) / 2;
+                const sy = (H - sh) / 2;
+                bgCtx.drawImage(bgImg, sx, sy, sw, sh);
+
+                const grad = bgCtx.createLinearGradient(0, H * 0.7, 0, H);
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+                bgCtx.fillStyle = grad;
+                bgCtx.fillRect(0, H * 0.7, W, H * 0.3);
+            };
+        }
+
+        // ============ DRAW SPEECH BUBBLE ============
+        function drawSpeechBubble(c, bpx, bpy, text, color) {
+            // Measure text to fit bubble properly
+            c.font = 'bold 14px "Courier New", monospace';
+            const maxWidth = 200;
+            const padding = 16;
+            const lineHeight = 18;
+            
+            // Wrap text into lines
+            const words = text.split(' ');
+            const lines = [];
+            let currentLine = '';
+            
+            for (let word of words) {
+                const testLine = currentLine ? currentLine + ' ' + word : word;
+                const metrics = c.measureText(testLine);
+                if (metrics.width > maxWidth && currentLine) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            if (currentLine) lines.push(currentLine);
+            
+            // Calculate bubble dimensions
+            let maxLineWidth = 0;
+            for (let line of lines) {
+                const metrics = c.measureText(line);
+                if (metrics.width > maxLineWidth) maxLineWidth = metrics.width;
+            }
+            
+            const bw = Math.max(100, maxLineWidth + padding * 2);
+            const bh = padding * 2 + lines.length * lineHeight;
+            const bx = bpx - bw / 2;
+            const by = bpy - bh - 12;
+
+            // Bubble background
+            c.fillStyle = '#fff';
+            c.strokeStyle = color;
+            c.lineWidth = 3;
+            c.beginPath();
+            c.roundRect(bx, by, bw, bh, 8);
+            c.fill();
+            c.stroke();
+
+            // Little triangle pointer
+            c.fillStyle = '#fff';
+            c.strokeStyle = color;
+            c.beginPath();
+            c.moveTo(bpx - 8, by + bh);
+            c.lineTo(bpx, by + bh + 10);
+            c.lineTo(bpx + 8, by + bh);
+            c.closePath();
+            c.fill();
+            c.stroke();
+            // Cover the border line inside bubble
+            c.fillStyle = '#fff';
+            c.fillRect(bpx - 7, by + bh - 2, 14, 3);
+
+            // Text
+            c.fillStyle = color;
+            c.font = 'bold 14px "Courier New", monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            lines.forEach((line, i) => {
+                c.fillText(line, bx + bw / 2, by + padding + lineHeight / 2 + i * lineHeight);
+            });
+        }
+
+        // ============ DRAW PIXEL HEART ============
+        function drawPixelHeart(c, cx, cy, size, color) {
+            const heart = [
+                [0,1,1,0,0,1,1,0],
+                [1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1],
+                [0,1,1,1,1,1,1,0],
+                [0,0,1,1,1,1,0,0],
+                [0,0,0,1,1,0,0,0],
+            ];
+            const ox = cx - 4 * size;
+            const oy = cy - 3.5 * size;
+            c.fillStyle = color;
+            for (let r = 0; r < heart.length; r++) {
+                for (let col = 0; col < heart[r].length; col++) {
+                    if (heart[r][col]) {
+                        c.fillRect(ox + col * size, oy + r * size, size, size);
+                    }
+                }
+            }
+            c.fillStyle = lighten(color, 60);
+            c.fillRect(ox + 1 * size, oy + 1 * size, size, size);
+            c.fillRect(ox + 5 * size, oy + 1 * size, size, size);
+        }
+
+        // ============ DRAW CHARACTERS (STATIC - NO DANCING) ============
+        let currentYouX = 28, currentYouY = 36;
+        let currentDateX = 76, currentDateY = 36;
+
+        function drawCharacters() {
+            charCtx.clearRect(0, 0, W, H);
+
+            // Static positions for normal gameplay
+            let youX = 28;
+            let youY = 36;
+            let dateX = 76;
+            let dateY = 36;
+
+            // Use animated positions during lose animation
+            if (isLoseAnimating) {
+                dateX = loserDatePos;
+            }
+
+            currentYouX = youX;
+            currentYouY = youY;
+            currentDateX = dateX;
+            currentDateY = dateY;
+
+            drawCharAt(charCtx, youX, youY, youChar);
+            drawCharAt(charCtx, dateX, dateY, dateChar);
+
+            if (catChar) {
+                const catBaseX = Math.round((youX + 24 + dateX) / 2) - 5;
+                const catBaseY = 62;
+                drawCatAt(charCtx, catBaseX, catBaseY, catChar);
+            }
+
+            // Big heart between them (static)
+            const heartCX = ((youX + 24) + dateX) / 2 * P + P / 2;
+            const heartBaseY = (youY + 18) * P;
+            drawPixelHeart(charCtx, heartCX, heartBaseY, 5, '#ff69b4');
+
+            // Small hearts (static)
+            drawPixelHeart(charCtx, heartCX - 35, heartBaseY - 40, 3, '#ff99cc');
+            drawPixelHeart(charCtx, heartCX + 40, heartBaseY - 35, 3, '#ff99cc');
+
+            // Draw speech bubble if active
+            if (currentBubble) {
+                const speakerIsYou = currentBubble.speaker === 'You';
+                const speakerX = speakerIsYou ? (currentYouX + 12) * P : (currentDateX + 12) * P;
+                const speakerY = Math.min(currentYouY, currentDateY) * P - 15;
+                drawSpeechBubble(charCtx, speakerX, speakerY, currentBubble.text, currentBubble.color);
+            }
+
+            frame++;
+            if (gameActive || isLoseAnimating) {
+                requestAnimationFrame(drawCharacters);
+            }
+        }
+
+        // ============ DIALOGUE SYSTEM ============
+        function getSpeakerColor(speaker) {
+            if (speaker === 'You') {
+                return youChar.bodyType === 'male' ? '#4a90e2' : '#ff69b4';
+            } else {
+                return dateChar.bodyType === 'male' ? '#4a90e2' : '#ff69b4';
+            }
+        }
+
+        let bubbleTimeout = null;
+        let currentChoice = null;
+
+        function showDateBubbleAndOptions() {
+            const node = dialogueTree[currentNode];
+            if (!node) return;
+
+            // Show date's speech bubble
+            currentBubble = {
+                speaker: node.speaker,
+                text: node.text,
+                color: getSpeakerColor(node.speaker),
+                startTime: Date.now()
+            };
+
+            if (node.end) {
+                setTimeout(() => endGame(node.end), 3000);
+                return;
+            }
+
+            // If node has choices, show them immediately
+            if (node.choices) {
+                const choicesContainer = document.getElementById('dialogueChoices');
+                choicesContainer.innerHTML = '';
+                node.choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = choice.text;
+                    btn.onclick = () => makeChoice(choice);
+                    choicesContainer.appendChild(btn);
+                });
+            } else if (node.next) {
+                // Auto-advance after showing bubble (for auto-responses like "nice" -> "nice")
+                setTimeout(() => {
+                    currentNode = node.next;
+                    showDateBubbleAndOptions();
+                }, 1000);
+            }
+
+            // Keep bubble visible for 8 seconds (for reading), then clear it
+            if (bubbleTimeout) clearTimeout(bubbleTimeout);
+            bubbleTimeout = setTimeout(() => {
+                currentBubble = null;
+            }, 8000);
+        }
+
+        function handleSceneClick() {
+            // Click to clear bubble early (for fast readers)
+            if (currentBubble && currentBubble.speaker === 'Date') {
+                currentBubble = null;
+                if (bubbleTimeout) {
+                    clearTimeout(bubbleTimeout);
+                    bubbleTimeout = null;
+                }
+            }
+        }
+
+        function updateDialogue() {
+            showDateBubbleAndOptions();
+        }
+
+        function makeChoice(choice) {
+            // Clear choices immediately
+            document.getElementById('dialogueChoices').innerHTML = '';
+
+            // Show player choice as a bubble briefly (1 second)
+            currentBubble = {
+                speaker: 'You',
+                text: choice.text,
+                color: getSpeakerColor('You'),
+                startTime: Date.now()
+            };
+            
+            // Brief pause then show date's response
+            setTimeout(() => {
+                currentNode = choice.next;
+                showDateBubbleAndOptions();
+            }, 1000);
+        }
+
+        function endGame(result) {
+            gameActive = false;
+            document.getElementById('choicesContainer').style.display = 'none';
+            document.getElementById('dialogueChoices').innerHTML = '';
+            if (bubbleTimeout) {
+                clearTimeout(bubbleTimeout);
+                bubbleTimeout = null;
+            }
+            
+            // Clear any speech bubble
+            currentBubble = null;
+
+            if (result === 'win') {
+                // Keep the scene visible, just show "DATE PERFECTED" message
+                const perfectMsg = document.createElement('div');
+                perfectMsg.id = 'perfectMsg';
+                perfectMsg.textContent = 'DATE PERFECTED';
+                perfectMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:5em;font-weight:bold;color:#4CAF50;text-shadow:4px 4px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;z-index:9999;font-family:"Courier New",monospace;pointer-events:none;animation:perfectPop 0.5s ease-out;';
+                document.body.appendChild(perfectMsg);
+                
+                // Show win overlay after 3 seconds
+                setTimeout(() => {
+                    if (document.getElementById('perfectMsg')) {
+                        document.getElementById('perfectMsg').remove();
+                    }
+                    document.getElementById('winOverlay').classList.remove('hidden');
+                }, 3000);
+            } else {
+                // Animate date walking to the right offscreen
+                isLoseAnimating = true;
+                loserDatePos = 76; // Start at date's original position
+                
+                const walkInterval = setInterval(() => {
+                    loserDatePos += 0.3; // Move date to the right
+                    if (loserDatePos > 130) {
+                        // Date is fully offscreen, show overlay
+                        clearInterval(walkInterval);
+                        isLoseAnimating = false;
+                        document.getElementById('loseOverlay').classList.remove('hidden');
+                    }
+                }, 16); // ~60fps
+            }
+        }
+
+        function startGame() {
+            currentNode = 'start';
+            gameActive = true;
+            currentChoice = null;
+            isLoseAnimating = false;
+            loserDatePos = 76;
+            if (bubbleTimeout) {
+                clearTimeout(bubbleTimeout);
+                bubbleTimeout = null;
+            }
+            document.getElementById('startOverlay').classList.add('hidden');
+            document.getElementById('winOverlay').classList.add('hidden');
+            document.getElementById('loseOverlay').classList.add('hidden');
+            document.getElementById('choicesContainer').style.display = 'block';
+            document.getElementById('dialogueChoices').innerHTML = '';
+            updateDialogue();
+            drawCharacters();
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        // ============ INITIALIZATION ============
+        drawBackground();
+        drawCharacters();
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('retryBtn').addEventListener('click', restartGame);
+        document.getElementById('replayBtn').addEventListener('click', restartGame);
+        
+        // Click to skip dialogue
+        document.getElementById('sceneFrame').addEventListener('click', handleSceneClick);
+    </script>
+</body>
+</html>

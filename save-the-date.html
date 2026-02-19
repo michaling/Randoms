@@ -200,7 +200,7 @@
                 <div class="overlay-sub" id="winMessage">You defeated the dragons and rescued your love!</div>
                 <div class="overlay-sub" id="winScore">Score: 0</div>
                 <div class="overlay-sub" id="winTotal">Total Score: 0</div>
-                <button class="overlay-btn" id="replayBtn">Play Again</button>
+                <button class="overlay-btn" id="nextLevelBtn">Next Level</button>
             </div>
         </div>
 
@@ -1764,7 +1764,7 @@
             // Handle dancing cutscene
             if (gameState === 'dancing') {
                 danceFrame++;
-                const danceDuration = 20000; // 20 seconds of dancing
+                const danceDuration = 5000; // 5 seconds of dancing
                 
                 if (Date.now() - danceStartTime >= danceDuration) {
                     gameState = 'won';
@@ -1956,7 +1956,9 @@
         });
         document.getElementById('startBtn').addEventListener('click', startGame);
         document.getElementById('retryBtn').addEventListener('click', startGame);
-        document.getElementById('replayBtn').addEventListener('click', startGame);
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            window.location.href = 'dialogue.html';
+        });
 
         // Start game loop
         gameLoop();
