@@ -202,6 +202,7 @@
     const bgMusic = new Audio('music/Anthem For The Earnest.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.4;
+    registerAudio(bgMusic, 'game');
 
     // ============ DRAW CHARACTER (same as date-scene but with P=4) ============
     function drawCharAt(c, ox, oy, ch) {
@@ -870,6 +871,7 @@
                     if (lives <= 0) {
                         gameState = 'over';
                         bgMusic.pause();
+                        resetAudioPlayingState('game');
                         bgMusic.currentTime = 0;
                         document.getElementById('finalScore').textContent = 'Score: ' + score;
                         document.getElementById('gameOverOverlay').classList.remove('hidden');
@@ -907,6 +909,7 @@
         if (coins >= totalCoins) {
             gameState = 'complete';
             bgMusic.pause();
+            resetAudioPlayingState('game');
             bgMusic.currentTime = 0;
             setValentineLevelScore(1, score);
             document.getElementById('completeScore').textContent = 'Score: ' + score;
@@ -986,7 +989,9 @@
         coins = 0;
         gameState = 'playing';
         bgMusic.currentTime = 0;
-        bgMusic.play().catch(() => {});
+        if (!getMuteState()) {
+            bgMusic.play().catch(() => {});
+        }
         document.getElementById('startOverlay').classList.add('hidden');
         document.getElementById('gameOverOverlay').classList.add('hidden');
         document.getElementById('levelCompleteOverlay').classList.add('hidden');

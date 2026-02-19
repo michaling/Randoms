@@ -194,6 +194,7 @@
     const bgMusic = new Audio(randomSong);
     bgMusic.loop = true;
     bgMusic.volume = 0.5;
+    registerAudio(bgMusic, 'dance');
 
     // ============ GAME CONSTANTS ============
     const LANE_KEYS = ['a', 'w', 's', 'd'];
@@ -599,6 +600,7 @@ feedbackText = 'OK';
                 if (strikes >= MAX_STRIKES) {
                     gameState = 'over';
                     bgMusic.pause();
+                    resetAudioPlayingState('dance');
                     bgMusic.currentTime = 0;
                     document.getElementById('failScore').textContent = 'Score: ' + score + ' / ' + WIN_SCORE;
                     document.getElementById('gameOverOverlay').classList.remove('hidden');
@@ -632,8 +634,9 @@ feedbackText = 'OK';
         if (score >= WIN_SCORE) {
             gameState = 'won';
             bgMusic.pause();
+            resetAudioPlayingState('dance');
             bgMusic.currentTime = 0;
-const finalScore = score + maxCombo * 10;
+            const finalScore = score + maxCombo * 10;
             setValentineLevelScore(3, finalScore);
             document.getElementById('winScore').textContent = 'Score: ' + score;
             document.getElementById('winTotal').textContent = 'Total Score: ' + getValentineTotalScore();
@@ -676,7 +679,9 @@ const finalScore = score + maxCombo * 10;
         dancePhase = 0;
         gameState = 'playing';
         bgMusic.currentTime = 0;
-        bgMusic.play().catch(() => {});
+        if (!getMuteState()) {
+            bgMusic.play().catch(() => {});
+        }
         document.getElementById('startOverlay').classList.add('hidden');
         document.getElementById('gameOverOverlay').classList.add('hidden');
         document.getElementById('winOverlay').classList.add('hidden');

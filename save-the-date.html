@@ -214,6 +214,7 @@
         const bgMusic = new Audio('music/battle.mp3');
         bgMusic.loop = true;
         bgMusic.volume = 0.5;
+        // registerAudio(bgMusic, 'save-the-date');
 
         // ============ SOUND EFFECTS ============
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -534,7 +535,7 @@
                 r(6, 26, 1, 2, shirtDark);
                 r(17, 26, 1, 2, shirtDark);
                 r(9, 21, 6, 1, shirtDark);
-                r(11, 24, 1, 3, shirtDark);
+                r(11, 24, 1, 1, shirtDark);
                 r(8, 23, 2, 1, shirtLight);
 
                 // Arms
@@ -1164,12 +1165,25 @@
             const cageWidth = 100;
             const cageHeight = 140;
 
-            // Cage frame
+            // Draw characters INSIDE the cage first (so cage bars appear in front)
+            // Date character (in cage) - positioned to fit inside cage bounds
+            const dateX = cageX + cageWidth / 2 - 25;
+            const dateY = cageY + cageHeight / 2 - 50;
+            drawDetailedCharacter(dateX, dateY, dateChar, 1.0);
+
+            // Cat (in cage, near date)
+            if (catChar) {
+                const catX = dateX + 50;
+                const catY = dateY + 50;
+                drawCatCharacter(catX, catY, catChar, 1.0);
+            }
+
+            // Cage frame (drawn AFTER characters so bars are in front)
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 4;
             ctx.strokeRect(cageX, cageY, cageWidth, cageHeight);
 
-            // Cage bars
+            // Cage bars vertical
             ctx.strokeStyle = '#654321';
             ctx.lineWidth = 3;
             for (let i = 15; i < cageWidth; i += 15) {
@@ -1195,18 +1209,6 @@
                 ctx.beginPath();
                 ctx.arc(cageX + cageWidth / 2, cageY + cageHeight - 18, 8, 0, Math.PI * 2);
                 ctx.fill();
-            }
-
-            // Date character (in cage)
-            const dateX = W - 200;
-            const dateY = H - 220;
-            drawDetailedCharacter(dateX, dateY, dateChar, 1.0);
-
-            // Cat (on the ground near date, in cage) - scaled to match character size
-            if (catChar) {
-                const catX = dateX + 85;
-                const catY = dateY + 50;
-                drawCatCharacter(catX, catY, catChar, 1.0);
             }
 
             // Key
@@ -1455,17 +1457,15 @@
             // Date is only reached when player has traveled FULL distance AND killed enough dragons AND walked to end
             const dateReached = distance >= TOTAL_DISTANCE && dragonsKilled >= MIN_DRAGONS_REQUIRED && player.x >= W - 250;
 
-            // Move player
+            // Move player - completely free movement, no blocking
             if (keys['w'] || keys['arrowup']) player.y = Math.max(0, player.y - currentSpeed);
             if (keys['s'] || keys['arrowdown']) player.y = Math.min(H - player.height - 50, player.y + currentSpeed);
             if (keys['a'] || keys['arrowleft']) player.x = Math.max(0, player.x - currentSpeed);
             if (keys['d'] || keys['arrowright']) {
-                if (!dateReached) {
-                    player.x = Math.min(W - player.width, player.x + currentSpeed);
-                    // Continue traveling distance even when date is visible until fully reached
-                    if (distance < TOTAL_DISTANCE) {
-                        distance += currentSpeed;
-                    }
+                player.x = Math.min(W - player.width, player.x + currentSpeed);
+                // Track distance traveled to encourage movement (but not required for progress bar)
+                if (distance < TOTAL_DISTANCE) {
+                    distance += currentSpeed;
                 }
             }
 
@@ -1488,6 +1488,34 @@
             // Update projectiles
             projectiles = projectiles.filter(p => {
                 p.x += PROJECTILE_SPEED;
+                
+                // Check collision with dragons
+                for (let i = 0; i < dragons.length; i++) {
+                    const d = dragons[i];
+                    if (p.x > d.x && p.x < d.x + d.width &&
+                        p.y > d.y && p.y < d.y + d.height) {
+                        // Hit the dragon
+                        d.health--;
+                        if (d.health <= 0) {
+                            dragons.splice(i, 1);
+                            dragonsKilled++;
+                            score += 100;
+                            // Death particles
+                            for (let j = 0; j < 15; j++) {
+                                particles.push({
+                                    x: d.x + d.width / 2,
+                                    y: d.y + d.height / 2,
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: (Math.random() - 0.5) * 8,
+                                    life: 20,
+                                    color: '#ff6600'
+                                });
+                            }
+                        }
+                        return false; // Remove projectile
+                    }
+                }
+                
                 return p.x < W;
             });
 
@@ -1622,55 +1650,11 @@
                         if (health <= 0) {
                             gameState = 'gameover';
                             bgMusic.pause();
+                            // resetAudioPlayingState('save-the-date');
                             document.getElementById('failScore').textContent = 'Score: ' + score;
                             document.getElementById('gameOverOverlay').classList.remove('hidden');
                         }
-                    }
-                }
-
-                // Check collision with projectiles - use generous hitbox covering entire dragon
-                // Hitbox covers: head (extends left), body, wings, and tail (extends right)
-                const dragonBodyBox = {
-                    x: d.x - 15,
-                    y: d.y - 10,
-                    width: d.width + 50,
-                    height: d.height + 10
-                };
-                for (let i = projectiles.length - 1; i >= 0; i--) {
-                    const p = projectiles[i];
-                    if (p.x < dragonBodyBox.x + dragonBodyBox.width && p.x + p.width > dragonBodyBox.x &&
-                        p.y < dragonBodyBox.y + dragonBodyBox.height && p.y + p.height > dragonBodyBox.y) {
-                        d.health--;
-                        projectiles.splice(i, 1);
-                        // Hit particles
-                        for (let j = 0; j < 5; j++) {
-                            particles.push({
-                                x: d.x + d.width / 2,
-                                y: d.y + d.height / 2,
-                                vx: (Math.random() - 0.5) * 5,
-                                vy: (Math.random() - 0.5) * 5,
-                                life: 15,
-                                color: '#ff69b4'
-                            });
-                        }
-                        if (d.health <= 0) {
-                            score += 200;
-                            dragonsKilled++;
-                            // Reduce total distance based on dragons killed (killed dragons shorten the journey!)
-                            TOTAL_DISTANCE = Math.max(MIN_DISTANCE, BASE_DISTANCE - dragonsKilled * DISTANCE_PER_DRAGON);
-                            // Explosion particles
-                            for (let j = 0; j < 15; j++) {
-                                particles.push({
-                                    x: d.x + d.width / 2,
-                                    y: d.y + d.height / 2,
-                                    vx: (Math.random() - 0.5) * 8,
-                                    vy: (Math.random() - 0.5) * 8,
-                                    life: 20,
-                                    color: ['#FF4500', '#FFD700', '#ff69b4'][Math.floor(Math.random() * 3)]
-                                });
-                            }
-                            return false;
-                        }
+                        return false;
                     }
                 }
 
@@ -1776,11 +1760,12 @@
             // Handle dancing cutscene
             if (gameState === 'dancing') {
                 danceFrame++;
-                const danceDuration = 50000; // 12 seconds of dancing
+                const danceDuration = 20000; // 20 seconds of dancing
                 
                 if (Date.now() - danceStartTime >= danceDuration) {
                     gameState = 'won';
                     bgMusic.pause();
+                    // resetAudioPlayingState('save-the-date');
                     const finalScore = score + Math.floor(health / 10) * 500;
                     setValentineLevelScore(4, finalScore);
                     document.getElementById('winScore').textContent = 'Score: ' + finalScore;
@@ -1794,8 +1779,11 @@
             document.getElementById('hpBar').style.width = hpPercent + '%';
             document.getElementById('hpText').textContent = Math.max(0, health) + '/' + maxHealth;
             document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
-            const progressPercent = Math.min(100, Math.floor((distance / TOTAL_DISTANCE) * 100));
-            document.getElementById('progressDisplay').textContent = 'Distance: ' + Math.floor(distance) + '/' + TOTAL_DISTANCE + ' (' + progressPercent + '%)';
+
+            // Progress bar based ONLY on dragons killed
+            const dragonProgress = Math.min(1, dragonsKilled / MIN_DRAGONS_REQUIRED);
+            let progressPercent = Math.floor(dragonProgress * 100);
+            document.getElementById('progressDisplay').textContent = `Progress: ${progressPercent}% (${dragonsKilled}/${MIN_DRAGONS_REQUIRED} dragons)`;
         }
 
         // ============ RENDER ============
@@ -1841,18 +1829,18 @@
                 drawParticles();
             }
 
-            // Draw progress bar (based on distance to date) - hide during rescue and dancing
+            // Draw progress bar (based ONLY on dragons killed) - hide during rescue and dancing
             if (gameState !== 'rescue' && gameState !== 'dancing' && gameState !== 'won') {
                 const barWidth = 300;
                 const barHeight = 20;
                 const barX = (W - barWidth) / 2;
                 const barY = 20;
-                const distanceProgress = Math.min(1, distance / TOTAL_DISTANCE);
+                const dragonProgress = Math.min(1, dragonsKilled / MIN_DRAGONS_REQUIRED);
                 
                 ctx.fillStyle = '#333';
                 ctx.fillRect(barX, barY, barWidth, barHeight);
                 ctx.fillStyle = '#ff69b4';
-                ctx.fillRect(barX, barY, barWidth * distanceProgress, barHeight);
+                ctx.fillRect(barX, barY, barWidth * dragonProgress, barHeight);
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(barX, barY, barWidth, barHeight);
@@ -1956,10 +1944,12 @@
             gameState = 'playing';
             console.log('gameState set to playing');
             bgMusic.currentTime = 0;
-            try {
-                bgMusic.play().catch(e => console.log('Audio play error:', e));
-            } catch(e) {
-                console.log('Audio error:', e);
+            if (!getMuteState()) {
+                try {
+                    bgMusic.play().catch(e => console.log('Audio play error:', e));
+                } catch(e) {
+                    console.log('Audio error:', e);
+                }
             }
             document.getElementById('storyOverlay').classList.add('hidden');
             document.getElementById('startOverlay').classList.add('hidden');

@@ -326,6 +326,7 @@
     const bgMusic = new Audio('music/Son Of Sam.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.4;
+    registerAudio(bgMusic, 'maze');
 
     // ============ INPUT ============
     const keys = {};
@@ -685,6 +686,7 @@
             if (playerR === exitR && playerC === exitC) {
                 gameState = 'won';
                 bgMusic.pause();
+                resetAudioPlayingState('maze');
                 bgMusic.currentTime = 0;
                 const finalScore = calcScore();
                 setValentineLevelScore(2, finalScore);
@@ -747,7 +749,9 @@
         elapsed = 0;
         gameState = 'playing';
         bgMusic.currentTime = 0;
-        bgMusic.play().catch(() => {});
+        if (!getMuteState()) {
+            bgMusic.play().catch(() => {});
+        }
         document.getElementById('startOverlay').classList.add('hidden');
         document.getElementById('winOverlay').classList.add('hidden');
     }

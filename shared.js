@@ -88,8 +88,23 @@ document.head.appendChild(link);
     backBtn.addEventListener('click', () => { window.location.href = pages[idx - 1]; });
     nav.appendChild(backBtn);
 
+    // Mute button
+    const muteBtn = document.createElement('button');
+    muteBtn.className = 'nav-top-btn';
+    muteBtn.id = 'muteBtn';
+    muteBtn.title = 'Toggle Sound';
+    muteBtn.textContent = '🔊';
+    muteBtn.addEventListener('click', () => {
+        const muted = toggleMute();
+        if (muted) {
+            pauseAllAudio();
+        }
+    });
+    nav.appendChild(muteBtn);
+
     document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(nav);
+        updateMuteButton();
     });
 })();
 
@@ -111,4 +126,63 @@ function getValentineLevelScore(level) {
 
 function setValentineLevelScore(level, score) {
     localStorage.setItem('valentineScore_level' + level, score);
+}
+
+// ============ MUTE FUNCTIONALITY ============
+let isMuted = localStorage.getItem('valentineMuted') === 'true';
+let audioRegistry = new Map();
+
+function registerAudio(audio, key = 'default') {
+    if (!audioRegistry.has(key)) {
+        audioRegistry.set(key, { audio, wasPlaying: false });
+        if (isMuted) {
+            audio.pause();
+        }
+    }
+}
+
+function toggleMute() {
+    isMuted = !isMuted;
+    localStorage.setItem('valentineMuted', isMuted);
+    updateMuteButton();
+    if (isMuted) {
+        pauseAllAudio();
+    } else {
+        resumeAllAudio();
+    }
+    return isMuted;
+}
+
+function getMuteState() {
+    return isMuted;
+}
+
+function updateMuteButton() {
+    const btn = document.getElementById('muteBtn');
+    if (btn) {
+        btn.textContent = isMuted ? '🔇' : '🔊';
+    }
+}
+
+function pauseAllAudio() {
+    audioRegistry.forEach((entry, key) => {
+        if (entry.audio) {
+            entry.wasPlaying = !entry.audio.paused && entry.audio.currentTime > 0;
+            entry.audio.pause();
+        }
+    });
+}
+
+function resumeAllAudio() {
+    audioRegistry.forEach((entry, key) => {
+        if (entry.audio && entry.wasPlaying && entry.audio.currentTime > 0) {
+            entry.audio.play().catch(() => {});
+        }
+    });
+}
+
+function resetAudioPlayingState(key) {
+    if (audioRegistry.has(key)) {
+        audioRegistry.get(key).wasPlaying = false;
+    }
 }
